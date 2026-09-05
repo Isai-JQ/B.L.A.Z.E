@@ -30,7 +30,7 @@ Derivado de `plan.md` (Plan Técnico 001). Cada tarea es de menos de 30 min e in
   RF: RF-1, RF-5, RF-6
   Hecho cuando: `pnpm db:push` crea la tabla y admite los tres valores de `status`.
 
-- [ ] **T7.** Definir tabla `jobs` (id, user_id, organization_id, printer_id, file_name, file_path, status, manual_rank, failure_reason, timestamps).
+- [x] **T7.** Definir tabla `jobs` (id, user_id, organization_id, printer_id, file_name, file_path, status, manual_rank, failure_reason, timestamps).
   RF: RF-2, RF-7, RF-10, RF-11, RF-13
   Hecho cuando: `pnpm db:push` crea la tabla con las FKs a `user_profiles`, `organizations` y `printers`.
 
