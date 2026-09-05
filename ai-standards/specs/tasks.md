@@ -48,7 +48,7 @@ Derivado de `plan.md` (Plan Técnico 001). Cada tarea es de menos de 30 min e in
   RF: RF-9
   Hecho cuando: un usuario nuevo puede registrarse e iniciar sesión.
 
-- [ ] **T11.** Agregar selector de organización en el registro, con opción de escribir una organización nueva (lista abierta).
+- [x] **T11.** Agregar selector de organización en el registro, con opción de escribir una organización nueva (lista abierta).
   RF: RF-9
   Hecho cuando: registrar un usuario con una organización no existente la crea automáticamente con `priority_tier` por defecto (2).
 
