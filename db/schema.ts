@@ -56,3 +56,19 @@ export const jobs = pgTable("jobs", {
   startedAt: timestamp("started_at", { withTimezone: true }),
   finishedAt: timestamp("finished_at", { withTimezone: true }),
 });
+
+export const notificationType = pgEnum("notification_type", ["job_failed", "job_waiting"]);
+
+export const notifications = pgTable("notifications", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => userProfiles.id),
+  jobId: uuid("job_id")
+    .notNull()
+    .references(() => jobs.id),
+  type: notificationType("type").notNull(),
+  message: text("message").notNull(),
+  readAt: timestamp("read_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});

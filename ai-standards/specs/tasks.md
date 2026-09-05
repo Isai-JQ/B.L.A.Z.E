@@ -34,7 +34,7 @@ Derivado de `plan.md` (Plan Técnico 001). Cada tarea es de menos de 30 min e in
   RF: RF-2, RF-7, RF-10, RF-11, RF-13
   Hecho cuando: `pnpm db:push` crea la tabla con las FKs a `user_profiles`, `organizations` y `printers`.
 
-- [ ] **T8.** Definir tabla `notifications` (id, user_id, job_id, type, message, read_at, created_at).
+- [x] **T8.** Definir tabla `notifications` (id, user_id, job_id, type, message, read_at, created_at).
   RF: RF-7, RF-10
   Hecho cuando: `pnpm db:push` crea la tabla con las FKs correspondientes.
 
