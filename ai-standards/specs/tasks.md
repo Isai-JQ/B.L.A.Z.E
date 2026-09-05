@@ -78,7 +78,7 @@ Derivado de `plan.md` (Plan Técnico 001). Cada tarea es de menos de 30 min e in
   RF: RF-1, RF-5, RF-6
   Hecho cuando: con dos o más impresoras insertadas en la tabla `printers` (aunque sea a mano, sin esperar a T16), el gateway se conecta a ambas y `GET /printers` devuelve el estado combinado de las dos.
 
-- [ ] **T15.** En el servicio, suscribirse a `device/{serial}/report` y actualizar `printers.status` / `last_seen_at` en la base de datos.
+- [x] **T15.** En el servicio, suscribirse a `device/{serial}/report` y actualizar `printers.status` / `last_seen_at` en la base de datos.
   RF: RF-1
   Hecho cuando: al simular un reporte MQTT, la fila de esa impresora en `printers` se actualiza.
 
