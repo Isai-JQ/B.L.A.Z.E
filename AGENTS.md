@@ -4,7 +4,7 @@
 Plataforma web de B.L.A.Z.E v2 para monitorear y controlar un fleet de impresoras Bambu Lab P1S, con una cola de prioridad automática por organización. Next.js (Pages Router) + TypeScript + Tailwind CSS en el frontend; Supabase (Auth + Postgres) vía Drizzle ORM para persistencia; un servicio Node local, extensión de `proxy.cjs`, habla MQTT con las impresoras y corre la lógica de asignación de la cola.
 
 ## Comandos
-- Ejecutar: `pnpm dev` (dashboard) + `node proxy.cjs <printer-ip> <access-code>` (gateway MQTT, en otra terminal)
+- Ejecutar: `pnpm dev` (dashboard) + `node proxy.cjs` (gateway MQTT, en otra terminal; lee las impresoras registradas directo de la tabla `printers`, ya no recibe IP/access code por CLI desde T14b)
 - Tests: `pnpm test`
 - Lint/formato: `pnpm lint`
 - Base de datos: `pnpm db:push` / `pnpm db:studio`
@@ -20,6 +20,7 @@ Plataforma web de B.L.A.Z.E v2 para monitorear y controlar un fleet de impresora
 - No depender de la Raspberry Pi todavía: la comunicación con impresoras es directa vía IP + access code.
 - Este proyecto parte del código y las lecciones de `Automatize-3D-printers` (https://github.com/FrED-Factory-MTY/Automatize-3D-printers). No se depende de una ruta local fija a ese repo: si hace falta revisar el código original, clónalo aparte donde te convenga. Los componentes específicos a rescatar y adaptar (ej. `useMqtt`, `proxy.cjs`, `AuthScreen.tsx`) ya están listados en `plan.md` y `tasks.md`.
 - Ninguna credencial (access code, claves Supabase) se commitea; solo vive en `.env`.
+- `lib/supabaseAdmin.ts` (usa la service role key, se salta RLS en todo) solo se importa desde rutas de servidor (`pages/api/**`) o el gateway. Nunca desde un componente de UI ni una página que se renderice en el navegador.
 - Ninguna dependencia nueva sin justificarla en `plan.md`.
 - Cualquier cambio de alcance se refleja primero en la spec, nunca directo en código.
 - Nunca se trabaja directo sobre `main`. Cada feature o fix va en su propia branch (ej. `feature/T22-auto-asignacion`, `fix/validacion-archivo`) y se mergea a `main` vía pull request, para mantener `main` siempre limpio y desplegable.
