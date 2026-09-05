@@ -86,7 +86,7 @@ Derivado de `plan.md` (Plan Técnico 001). Cada tarea es de menos de 30 min e in
   RF: RF-1
   Hecho cuando: un POST válido crea la fila en `printers` y uno inválido devuelve error.
 
-- [ ] **T16b.** Habilitar RLS en `printers` sin ninguna policy para `anon`/`authenticated` (deny-all desde el cliente). Solo el servidor, con `DATABASE_URL` (dueño de la tabla, no sujeto a RLS), puede leer o escribir. Cualquier vista futura que necesite mostrar impresoras en el navegador debe pasar por una ruta de servidor que no incluya `access_code`.
+- [x] **T16b.** Habilitar RLS en `printers` sin ninguna policy para `anon`/`authenticated` (deny-all desde el cliente). Solo el servidor, con `DATABASE_URL` (dueño de la tabla, no sujeto a RLS), puede leer o escribir. Cualquier vista futura que necesite mostrar impresoras en el navegador debe pasar por una ruta de servidor que no incluya `access_code`.
   RF: RF-1
   Hecho cuando: una llamada directa a la API de Supabase (no vía `/api/printers` ni el servidor) para leer o escribir `printers` es rechazada, para cualquier rol.
 

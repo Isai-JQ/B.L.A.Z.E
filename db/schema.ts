@@ -33,6 +33,7 @@ export const userProfiles = pgTable(
 
 export const printerStatus = pgEnum("printer_status", ["idle", "printing", "offline"]);
 
+// T16b: RLS on, no policies — deny-all from the client. See db/sql/002_printers_rls.sql.
 export const printers = pgTable("printers", {
   id: uuid("id").primaryKey().defaultRandom(),
   serialNumber: text("serial_number").notNull().unique(),
@@ -41,7 +42,7 @@ export const printers = pgTable("printers", {
   accessCode: text("access_code").notNull(),
   status: printerStatus("status").notNull().default("offline"),
   lastSeenAt: timestamp("last_seen_at", { withTimezone: true }),
-});
+}).enableRLS();
 
 export const jobStatus = pgEnum("job_status", [
   "queued",
