@@ -88,11 +88,15 @@ function handleReport(topic, message) {
   return state;
 }
 
+// gcode_state values that mean "printer is free". Everything else (RUNNING, PAUSE,
+// PREPARE, …) leaves a job occupying the bed, so it counts as 'printing'.
+// ponytail: FINISH is 'idle' only until the Raspberry Pi phase adds bed-cleared confirmation.
+const IDLE_GCODE_STATES = new Set(["IDLE", "FINISH"]);
+
 // Mirrors a merged report onto the printer's DB row: `status` is 'printing' while the
-// printer reports a running job, 'idle' otherwise; `last_seen_at` is bumped to now. (T15)
-// ponytail: only gcode_state RUNNING counts as printing; refine if PAUSE/PREPARE need it.
+// printer is still busy with a job, 'idle' when it is free; `last_seen_at` = now. (T15)
 async function persistReport(db, state) {
-  const status = state.gcodeState === "RUNNING" ? "printing" : "idle";
+  const status = IDLE_GCODE_STATES.has(state.gcodeState) ? "idle" : "printing";
   await db.execute(
     sql`update printers set status = ${status}, last_seen_at = now() where serial_number = ${state.serial}`,
   );

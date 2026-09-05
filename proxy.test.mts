@@ -201,4 +201,8 @@ it("writes status and last_seen_at back to the printers row on each report", asy
 
   emit({ gcode_state: "IDLE" });
   await waitForStatus(fleet[0].serial, "idle");
+
+  // A paused print still occupies the bed: the printer is busy, not free.
+  emit({ gcode_state: "PAUSE" });
+  await waitForStatus(fleet[0].serial, "printing");
 });
