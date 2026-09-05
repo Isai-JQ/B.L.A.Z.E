@@ -26,7 +26,7 @@ Derivado de `plan.md` (Plan Técnico 001). Cada tarea es de menos de 30 min e in
   RF: RF-9
   Hecho cuando: `pnpm db:push` crea la tabla con la FK aplicada.
 
-- [ ] **T6.** Definir tabla `printers` (id, serial_number, name, ip_address, access_code, status, last_seen_at).
+- [x] **T6.** Definir tabla `printers` (id, serial_number, name, ip_address, access_code, status, last_seen_at).
   RF: RF-1, RF-5, RF-6
   Hecho cuando: `pnpm db:push` crea la tabla y admite los tres valores de `status`.
 
