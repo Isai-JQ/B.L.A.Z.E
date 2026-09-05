@@ -53,7 +53,6 @@ describe("AuthScreen", () => {
 
   it("registers a new user under an existing organization", async () => {
     from.mockReturnValueOnce(chain({ data: ORGS, error: null }));
-    from.mockReturnValueOnce(chain({ data: null, error: null }));
     signUp.mockResolvedValue({ data: { user: { id: "user-1" } }, error: null });
 
     render(<AuthScreen />);
@@ -71,23 +70,17 @@ describe("AuthScreen", () => {
     fireEvent.click(screen.getByRole("button", { name: "Register" }));
 
     await waitFor(() =>
-      expect(signUp).toHaveBeenCalledWith({ email: "new@tec.mx", password: "password1" }),
+      expect(signUp).toHaveBeenCalledWith({
+        email: "new@tec.mx",
+        password: "password1",
+        options: { data: { organization_name: "RoBorregos" } },
+      }),
     );
     await screen.findByText(/Check your email to confirm/);
-
-    const profileInsert = from.mock.results[1].value.insert;
-    expect(profileInsert).toHaveBeenCalledWith({
-      id: "user-1",
-      email: "new@tec.mx",
-      organization_id: "org-rob",
-    });
   });
 
-  it("creates a new organization automatically when it doesn't exist yet", async () => {
+  it("registers under a brand-new organization name (created server-side)", async () => {
     from.mockReturnValueOnce(chain({ data: ORGS, error: null })); // org list on mount
-    from.mockReturnValueOnce(chain({ data: [], error: null })); // existence check
-    from.mockReturnValueOnce(chain({ data: { id: "org-new" }, error: null })); // insert org
-    from.mockReturnValueOnce(chain({ data: null, error: null })); // insert user profile
     signUp.mockResolvedValue({ data: { user: { id: "user-2" } }, error: null });
 
     render(<AuthScreen />);
@@ -107,20 +100,14 @@ describe("AuthScreen", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "Register" }));
 
+    await waitFor(() =>
+      expect(signUp).toHaveBeenCalledWith({
+        email: "founder@tec.mx",
+        password: "password1",
+        options: { data: { organization_name: "Aeroblaze" } },
+      }),
+    );
     await screen.findByText(/Check your email to confirm/);
-
-    const existenceCheck = from.mock.results[1].value;
-    expect(existenceCheck.eq).toHaveBeenCalledWith("name", "Aeroblaze");
-
-    const insertOrg = from.mock.results[2].value;
-    expect(insertOrg.insert).toHaveBeenCalledWith({ name: "Aeroblaze" });
-
-    const profileInsert = from.mock.results[3].value.insert;
-    expect(profileInsert).toHaveBeenCalledWith({
-      id: "user-2",
-      email: "founder@tec.mx",
-      organization_id: "org-new",
-    });
   });
 
   it("shows the error message when auth fails", async () => {

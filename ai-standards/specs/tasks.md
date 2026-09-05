@@ -52,6 +52,10 @@ Derivado de `plan.md` (Plan Técnico 001). Cada tarea es de menos de 30 min e in
   RF: RF-9
   Hecho cuando: registrar un usuario con una organización no existente la crea automáticamente con `priority_tier` por defecto (2).
 
+- [x] **T11b.** Habilitar RLS en `organizations` y `user_profiles`; mover la creación de organización + perfil al registro a un trigger `SECURITY DEFINER` sobre `auth.users` (en vez de inserts desde el cliente) para que sea compatible con RLS y con la confirmación de email.
+  RF: RF-9
+  Hecho cuando: `organizations` solo permite SELECT a `authenticated` (sin INSERT/UPDATE/DELETE desde el cliente); `user_profiles` solo permite a cada usuario SELECT y UPDATE de su propia fila (`id = auth.uid()`) sin poder cambiar `role`; un test que llama la API de Supabase directamente confirma que leer el perfil de otro usuario y cambiar el propio `role` fallan.
+
 - [ ] **T12.** Asignar `role = 'member'` por defecto al registrarse; documentar cómo promover un usuario a `'admin'` manualmente (sin UI todavía).
   RF: RF-13
   Hecho cuando: existe al menos un usuario de prueba con `role = 'admin'` en la base de datos.

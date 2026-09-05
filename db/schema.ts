@@ -1,21 +1,35 @@
 import { integer, pgEnum, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 
-export const organizations = pgTable("organizations", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  name: text("name").notNull(),
-  priorityTier: integer("priority_tier").notNull().default(2),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+// RLS is enabled here (drizzle-kit push applies `enableRLS()` correctly), but the actual
+// policies (USING/WITH CHECK expressions referencing auth.uid()) live in
+// db/sql/001_auth_triggers.sql instead of as `pgPolicy(...)` below: drizzle-kit push
+// silently drops policy expressions on tables it introspects (creates the policy but with
+// a null qual, i.e. it blocks every row) — raw SQL is the only reliable way to apply them.
 
-export const userProfiles = pgTable("user_profiles", {
-  id: uuid("id").primaryKey(),
-  email: text("email").notNull(),
-  organizationId: uuid("organization_id")
-    .notNull()
-    .references(() => organizations.id),
-  role: text("role").notNull().default("member"),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+export const organizations = pgTable(
+  "organizations",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    name: text("name").notNull(),
+    priorityTier: integer("priority_tier").notNull().default(2),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  () => [],
+).enableRLS();
+
+export const userProfiles = pgTable(
+  "user_profiles",
+  {
+    id: uuid("id").primaryKey(),
+    email: text("email").notNull(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id),
+    role: text("role").notNull().default("member"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  () => [],
+).enableRLS();
 
 export const printerStatus = pgEnum("printer_status", ["idle", "printing", "offline"]);
 
