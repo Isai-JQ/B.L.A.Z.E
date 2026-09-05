@@ -74,7 +74,7 @@ Derivado de `plan.md` (Plan Técnico 001). Cada tarea es de menos de 30 min e in
   RF: RF-1, RF-5, RF-6
   Hecho cuando: el servicio corre de forma independiente y expone el estado de al menos una impresora simulada.
 
-- [ ] **T14b.** Extender el gateway para que, en vez de tomar una sola impresora por argumentos de CLI, lea las impresoras registradas en la tabla `printers` y abra una conexión MQTT independiente por cada una, con el estado combinado accesible en un solo `GET /printers`.
+- [x] **T14b.** Extender el gateway para que, en vez de tomar una sola impresora por argumentos de CLI, lea las impresoras registradas en la tabla `printers` y abra una conexión MQTT independiente por cada una, con el estado combinado accesible en un solo `GET /printers`.
   RF: RF-1, RF-5, RF-6
   Hecho cuando: con dos o más impresoras insertadas en la tabla `printers` (aunque sea a mano, sin esperar a T16), el gateway se conecta a ambas y `GET /printers` devuelve el estado combinado de las dos.
 

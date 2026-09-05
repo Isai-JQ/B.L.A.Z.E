@@ -1,23 +1,34 @@
+import { randomUUID } from "node:crypto";
+import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import type { Server } from "node:http";
-import { afterAll, expect, it } from "vitest";
+import { drizzle } from "drizzle-orm/postgres-js";
+import postgres from "postgres";
+import { afterAll, beforeAll, expect, it } from "vitest";
 
 // proxy.cjs is CommonJS and runs outside Next.js (plain `node proxy.cjs`), so it is
 // required rather than imported.
-const { start, handleReport, printers } = createRequire(import.meta.url)("./proxy.cjs");
+const { start, syncPrinters, handleReport, printers } =
+  createRequire(import.meta.url)("./proxy.cjs");
 
 const SERIAL = "01P00A123456789";
-const report = (print: Record<string, unknown>) =>
-  handleReport(`device/${SERIAL}/report`, Buffer.from(JSON.stringify({ print })));
+const report = (serial: string, print: Record<string, unknown>) =>
+  handleReport(`device/${serial}/report`, Buffer.from(JSON.stringify({ print })));
 
 const server: Server = start(0, "127.0.0.1");
 afterAll(() => void server.close());
+
+const port = () => (server.address() as { port: number }).port;
+const getPrinters = async () =>
+  (await fetch(`http://127.0.0.1:${port()}/printers`)).json() as Promise<
+    Array<Record<string, unknown> & { serial: string }>
+  >;
 
 it("keeps simulated printer state in memory and exposes it over HTTP", async () => {
   if (!server.listening) await new Promise((resolve) => server.once("listening", resolve));
 
   // Simulated printer: a P1S sends one full report and then partial deltas.
-  report({
+  report(SERIAL, {
     gcode_state: "RUNNING",
     nozzle_temper: 219.7,
     bed_temper: 60,
@@ -27,15 +38,13 @@ it("keeps simulated printer state in memory and exposes it over HTTP", async () 
     mc_remaining_time: 51,
     gcode_file: "/data/Metadata/fred.gcode",
   });
-  report({ mc_percent: 43, layer_num: 13, nozzle_temper: 220.1 });
+  report(SERIAL, { mc_percent: 43, layer_num: 13, nozzle_temper: 220.1 });
 
   // Junk is ignored instead of clobbering the state.
   expect(handleReport(`device/${SERIAL}/report`, Buffer.from("not json"))).toBeNull();
   expect(handleReport("device//report", Buffer.from("{}"))).toBeNull();
 
-  const port = (server.address() as { port: number }).port;
-  const body = await (await fetch(`http://127.0.0.1:${port}/printers`)).json();
-
+  const body = await getPrinters();
   expect(body).toHaveLength(1);
   expect(body[0]).toMatchObject({
     serial: SERIAL,
@@ -49,6 +58,105 @@ it("keeps simulated printer state in memory and exposes it over HTTP", async () 
     remainingTime: 51,
     gcodeFile: "/data/Metadata/fred.gcode",
   });
-  expect(Date.parse(body[0].lastReportAt)).not.toBeNaN();
+  expect(Date.parse(body[0].lastReportAt as string)).not.toBeNaN();
   expect(printers.size).toBe(1);
+});
+
+// ---------------------------------------------------------------------------
+// T14b: fleet is read from the `printers` table, one MQTT client per row, and
+// GET /printers serves the combined state. Uses the live Supabase project from
+// .env (like db/rls.integration.test.ts); MQTT is stubbed for both printers.
+// ---------------------------------------------------------------------------
+
+for (const line of readFileSync(".env", "utf8").split("\n")) {
+  const m = line.match(/^([A-Z_]+)=(.*)$/);
+  if (m && !process.env[m[1]]) process.env[m[1]] = m[2].replace(/^"|"$/g, "");
+}
+
+const sql = postgres(process.env.DATABASE_URL!);
+const db = drizzle(sql);
+
+const suffix = randomUUID().slice(0, 8);
+const fleet = [
+  { serial: `T14B-A-${suffix}`, ip: "10.0.0.201", code: "aaaa1111" },
+  { serial: `T14B-B-${suffix}`, ip: "10.0.0.202", code: "bbbb2222" },
+];
+
+// Stub MQTT client: records the connect args and lets the test push messages
+// through the same `on("message")` path a real broker would drive.
+interface Stub {
+  url: string;
+  password: string;
+  emit(ev: string, ...a: unknown[]): void;
+  on(ev: string, fn: (...a: unknown[]) => void): void;
+  subscribe(): void;
+  publish(): void;
+  end(): void;
+}
+const stubs: Stub[] = [];
+const fakeConnect = (url: string, opts: { password: string }): Stub => {
+  const handlers: Record<string, (...a: unknown[]) => void> = {};
+  const stub: Stub = {
+    url,
+    password: opts.password,
+    emit: (ev, ...a) => handlers[ev]?.(...a),
+    on: (ev, fn) => void (handlers[ev] = fn),
+    subscribe: () => {},
+    publish: () => {},
+    end: () => {},
+  };
+  stubs.push(stub);
+  return stub;
+};
+
+beforeAll(async () => {
+  for (const p of fleet) {
+    await sql`
+      insert into printers (serial_number, name, ip_address, access_code, status)
+      values (${p.serial}, ${p.serial}, ${p.ip}, ${p.code}, 'offline')
+    `;
+  }
+  printers.clear();
+});
+
+afterAll(async () => {
+  await sql`delete from printers where serial_number = any(${fleet.map((p) => p.serial)})`;
+  await sql.end();
+});
+
+it("watches every registered printer and serves their combined state", async () => {
+  const rows = (await syncPrinters(db, fakeConnect)) as Array<{ serial_number: string }>;
+  const mine = rows.filter(
+    (r) => r.serial_number.startsWith("T14B-") && r.serial_number.endsWith(suffix),
+  );
+  expect(mine).toHaveLength(2);
+
+  // One MQTT client opened per row, dialed with the row's access_code.
+  const opened = stubs.filter((s) => s.url.includes("10.0.0.20"));
+  expect(opened).toHaveLength(2);
+  expect(opened.map((s) => s.password).sort()).toEqual(["aaaa1111", "bbbb2222"]);
+
+  // Each printer reports over its own client; state lands in the shared map.
+  opened
+    .find((s) => s.url.includes("10.0.0.201"))!
+    .emit(
+      "message",
+      `device/${fleet[0].serial}/report`,
+      Buffer.from(JSON.stringify({ print: { gcode_state: "RUNNING", mc_percent: 10 } })),
+    );
+  opened
+    .find((s) => s.url.includes("10.0.0.202"))!
+    .emit(
+      "message",
+      `device/${fleet[1].serial}/report`,
+      Buffer.from(JSON.stringify({ print: { gcode_state: "IDLE", mc_percent: 0 } })),
+    );
+
+  const bySerial = Object.fromEntries((await getPrinters()).map((s) => [s.serial, s]));
+  expect(bySerial[fleet[0].serial]).toMatchObject({ gcodeState: "RUNNING", printPercent: 10 });
+  expect(bySerial[fleet[1].serial]).toMatchObject({ gcodeState: "IDLE", printPercent: 0 });
+
+  // A second sync is a no-op for rows already watched: no extra clients.
+  await syncPrinters(db, fakeConnect);
+  expect(stubs.filter((s) => s.url.includes("10.0.0.20"))).toHaveLength(2);
 });
