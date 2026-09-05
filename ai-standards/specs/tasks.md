@@ -18,7 +18,7 @@ Derivado de `plan.md` (Plan Técnico 001). Cada tarea es de menos de 30 min e in
 
 ## Fase 1 — Modelo de datos
 
-- [ ] **T4.** Definir tabla `organizations` (id, name, priority_tier) en el esquema Drizzle.
+- [x] **T4.** Definir tabla `organizations` (id, name, priority_tier) en el esquema Drizzle.
   RF: RF-9
   Hecho cuando: `pnpm db:push` crea la tabla y se puede insertar una fila de prueba.
 
