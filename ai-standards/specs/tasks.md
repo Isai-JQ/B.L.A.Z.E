@@ -90,7 +90,7 @@ Derivado de `plan.md` (Plan Técnico 001). Cada tarea es de menos de 30 min e in
   RF: RF-1
   Hecho cuando: una llamada directa a la API de Supabase (no vía `/api/printers` ni el servidor) para leer o escribir `printers` es rechazada, para cualquier rol.
 
-- [ ] **T17.** Chequeo periódico: marcar una impresora como `offline` si no llega un reporte dentro de un umbral de tiempo.
+- [x] **T17.** Chequeo periódico: marcar una impresora como `offline` si no llega un reporte dentro de un umbral de tiempo.
   RF: RF-6
   Hecho cuando: al dejar de simular reportes de una impresora, su `status` cambia a `offline` tras el umbral.
 
