@@ -4,7 +4,7 @@ Derivado de `plan.md` (Plan Técnico 001). Cada tarea es de menos de 30 min e in
 
 ## Fase 0 — Setup del proyecto
 
-- [ ] **T1.** Crear repo nuevo con Next.js (Pages Router) + TypeScript + Tailwind CSS, gestionado con pnpm.
+- [x] **T1.** Crear repo nuevo con Next.js (Pages Router) + TypeScript + Tailwind CSS, gestionado con pnpm.
   RF: — (infraestructura)
   Hecho cuando: `pnpm dev` levanta una página en blanco sin errores.
 
