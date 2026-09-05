@@ -24,21 +24,10 @@ export default function AuthScreen() {
       .then(({ data }) => setOrganizations(data ?? []));
   }, [isLogin]);
 
-  const resolveOrganizationId = async (): Promise<string> => {
-    if (selectedOrg !== NEW_ORG_VALUE) return selectedOrg;
-
-    const orgName = newOrgName.trim();
-    const { data: existing } = await supabase.from("organizations").select("id").eq("name", orgName);
-    if (existing && existing.length > 0) return existing[0].id;
-
-    const { data: created, error } = await supabase
-      .from("organizations")
-      .insert({ name: orgName })
-      .select("id")
-      .single();
-    if (error || !created) throw new Error(error?.message ?? "No se pudo crear la organización.");
-    return created.id;
-  };
+  const resolveOrganizationName = (): string =>
+    selectedOrg === NEW_ORG_VALUE
+      ? newOrgName.trim()
+      : (organizations.find((org) => org.id === selectedOrg)?.name ?? "");
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -64,22 +53,15 @@ export default function AuthScreen() {
       return;
     }
 
-    const { data, error } = await supabase.auth.signUp({ email, password });
-    if (error || !data.user) {
-      setMessage(`Error: ${error?.message ?? "No se pudo crear la cuenta."}`);
-      setLoading(false);
-      return;
-    }
-
-    try {
-      const organizationId = await resolveOrganizationId();
-      const { error: profileError } = await supabase
-        .from("user_profiles")
-        .insert({ id: data.user.id, email, organization_id: organizationId });
-      if (profileError) throw new Error(profileError.message);
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { data: { organization_name: resolveOrganizationName() } },
+    });
+    if (error) {
+      setMessage(`Error: ${error.message}`);
+    } else {
       setMessage("Success! Check your email to confirm your account.");
-    } catch (err) {
-      setMessage(`Error: ${err instanceof Error ? err.message : "No se pudo completar el registro."}`);
     }
     setLoading(false);
   };
