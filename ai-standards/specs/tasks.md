@@ -12,7 +12,7 @@ Derivado de `plan.md` (Plan Técnico 001). Cada tarea es de menos de 30 min e in
   RF: — (infraestructura)
   Hecho cuando: `.env.example` existe en el repo y `.env` real está en `.gitignore`.
 
-- [ ] **T3.** Configurar Drizzle ORM (`drizzle.config.ts`) apuntando al proyecto de Supabase.
+- [x] **T3.** Configurar Drizzle ORM (`drizzle.config.ts`) apuntando al proyecto de Supabase.
   RF: — (infraestructura)
   Hecho cuando: `pnpm db:studio` conecta sin errores a la base de datos.
 
