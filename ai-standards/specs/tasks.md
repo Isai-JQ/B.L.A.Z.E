@@ -64,7 +64,7 @@ Derivado de `plan.md` (Plan Técnico 001). Cada tarea es de menos de 30 min e in
   RF: RF-13
   Hecho cuando: existe al menos un usuario de prueba con `role = 'admin'` en la base de datos.
 
-- [ ] **T13.** Middleware/guard: bloquear todas las páginas del dashboard a usuarios no autenticados.
+- [x] **T13.** Middleware/guard: bloquear todas las páginas del dashboard a usuarios no autenticados.
   RF: RF-9
   Hecho cuando: acceder a `/` sin sesión redirige a la pantalla de login.
 
