@@ -22,7 +22,7 @@ Derivado de `plan.md` (Plan Técnico 001). Cada tarea es de menos de 30 min e in
   RF: RF-9
   Hecho cuando: `pnpm db:push` crea la tabla y se puede insertar una fila de prueba.
 
-- [ ] **T5.** Definir tabla `user_profiles` (id, email, organization_id, role) con FK a `organizations`.
+- [x] **T5.** Definir tabla `user_profiles` (id, email, organization_id, role) con FK a `organizations`.
   RF: RF-9
   Hecho cuando: `pnpm db:push` crea la tabla con la FK aplicada.
 
