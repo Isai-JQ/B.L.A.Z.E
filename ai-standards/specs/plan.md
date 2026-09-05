@@ -197,3 +197,10 @@ Derivado de `plan.md` (Plan Técnico 001). Cada tarea es de menos de 30 min e in
 - [ ] **T42.** Test E2E (manual o Playwright) del reordenamiento de admin reflejado en la vista de cola (T33).
   RF: RF-13
   Hecho cuando: el nuevo orden fijado por el admin se ve igual en la UI y en la base de datos.
+
+## Dependencias
+
+Justificación de cada dependencia añadida fuera del scaffold inicial (constitución, regla 10).
+
+- **`ws`** (T14) — servidor WebSocket del gateway (`proxy.cjs`). Node no trae servidor WS (solo cliente, desde v22), y el bridge WS↔TLS es la única forma de que el navegador hable MQTT con la impresora. Misma librería que usaba `proxy.cjs` en `Automatize-3D-printers`.
+- **`mqtt`** (T14) — cliente MQTT del gateway contra la impresora (`mqtts://<ip>:8883`). El servicio necesita su propia sesión MQTT para mantener el estado del fleet en memoria aunque no haya ningún navegador abierto; implementar MQTT 3.1.1 a mano no se justifica. Ya era dependencia del repo de referencia.
