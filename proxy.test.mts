@@ -8,7 +8,7 @@ import { afterAll, beforeAll, expect, it } from "vitest";
 
 // proxy.cjs is CommonJS and runs outside Next.js (plain `node proxy.cjs`), so it is
 // required rather than imported.
-const { start, syncPrinters, handleReport, printers } =
+const { start, syncPrinters, sweepOffline, handleReport, printers } =
   createRequire(import.meta.url)("./proxy.cjs");
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -204,5 +204,35 @@ it("writes status and last_seen_at back to the printers row on each report", asy
 
   // A paused print still occupies the bed: the printer is busy, not free.
   emit({ gcode_state: "PAUSE" });
+  await waitForStatus(fleet[0].serial, "printing");
+});
+
+// ---------------------------------------------------------------------------
+// T17: a periodic sweep marks a printer 'offline' once its last report is older
+// than the threshold, and leaves printers that are still reporting alone. A
+// later report brings it back via the T15 path.
+// ---------------------------------------------------------------------------
+
+it("marks a stale printer offline on sweep without touching the others (T17)", async () => {
+  await syncPrinters(db, fakeConnect);
+  const emit = (ip: string, serial: string, print: Record<string, unknown>) =>
+    stubs
+      .find((s) => s.url.includes(ip))!
+      .emit("message", `device/${serial}/report`, Buffer.from(JSON.stringify({ print })));
+
+  emit("10.0.0.201", fleet[0].serial, { gcode_state: "RUNNING", mc_percent: 5 });
+  emit("10.0.0.202", fleet[1].serial, { gcode_state: "IDLE" });
+  await waitForStatus(fleet[0].serial, "printing");
+  await waitForStatus(fleet[1].serial, "idle");
+
+  // fleet[0] stops reporting: age its last_seen_at past the threshold. fleet[1] stays fresh.
+  await sql`update printers set last_seen_at = now() - interval '90 seconds' where serial_number = ${fleet[0].serial}`;
+  await sweepOffline(db, 30);
+
+  expect((await rowFor(fleet[0].serial)).status).toBe("offline");
+  expect((await rowFor(fleet[1].serial)).status).toBe("idle");
+
+  // It reports again → back to a live status.
+  emit("10.0.0.201", fleet[0].serial, { gcode_state: "RUNNING", mc_percent: 6 });
   await waitForStatus(fleet[0].serial, "printing");
 });

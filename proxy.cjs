@@ -24,6 +24,8 @@ const postgres = require("postgres");
 
 const PRINTER_PORT = 8883;
 const PRINTERS_RELOAD_MS = 30_000;
+const OFFLINE_CHECK_MS = 15_000;
+const OFFLINE_AFTER_SECONDS = 45;
 
 // serial -> last known state. T15 also mirrors `status` / `last_seen_at` back to the DB row.
 const printers = new Map();
@@ -146,6 +148,18 @@ function watchPrinter(ip, accessCode, serial, connect = mqtt.connect, db = null)
   return client;
 }
 
+// Flips any printer whose last report is older than `thresholdSeconds` to 'offline'.
+// The next report brings it back to 'idle'/'printing' via persistReport (T15). Runs on
+// an interval so a printer that just stops talking is caught without a report. (T17)
+async function sweepOffline(db, thresholdSeconds = OFFLINE_AFTER_SECONDS) {
+  await db.execute(
+    sql`update printers set status = 'offline'
+        where status <> 'offline'
+          and (last_seen_at is null
+               or last_seen_at < now() - make_interval(secs => ${thresholdSeconds}))`,
+  );
+}
+
 // Reads the `printers` table and opens an MQTT client for every row not already watched.
 // Safe to call repeatedly (startup + interval): existing clients are left untouched.
 async function syncPrinters(db, connect = mqtt.connect) {
@@ -232,12 +246,18 @@ if (require.main === module) {
     syncPrinters(db).catch((e) => console.error("printers reload failed:", e.message));
   reload();
   setInterval(reload, PRINTERS_RELOAD_MS).unref();
+
+  const sweep = () =>
+    sweepOffline(db).catch((e) => console.error("offline sweep failed:", e.message));
+  sweep();
+  setInterval(sweep, OFFLINE_CHECK_MS).unref();
 }
 
 module.exports = {
   start,
   watchPrinter,
   syncPrinters,
+  sweepOffline,
   handleReport,
   persistReport,
   printers,
