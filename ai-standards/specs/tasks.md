@@ -74,17 +74,21 @@ Derivado de `plan.md` (Plan Técnico 001). Cada tarea es de menos de 30 min e in
   RF: RF-1, RF-5, RF-6
   Hecho cuando: el servicio corre de forma independiente y expone el estado de al menos una impresora simulada.
 
-- [x] **T14b.** Extender el gateway para que, en vez de tomar una sola impresora por argumentos de CLI, lea las impresoras registradas en la tabla `printers` y abra una conexión MQTT independiente por cada una, con el estado combinado accesible en un solo `GET /printers`.
+- [ ] **T14b.** Extender el gateway para que, en vez de tomar una sola impresora por argumentos de CLI, lea las impresoras registradas en la tabla `printers` y abra una conexión MQTT independiente por cada una, con el estado combinado accesible en un solo `GET /printers`.
   RF: RF-1, RF-5, RF-6
   Hecho cuando: con dos o más impresoras insertadas en la tabla `printers` (aunque sea a mano, sin esperar a T16), el gateway se conecta a ambas y `GET /printers` devuelve el estado combinado de las dos.
 
-- [x] **T15.** En el servicio, suscribirse a `device/{serial}/report` y actualizar `printers.status` / `last_seen_at` en la base de datos.
+- [ ] **T15.** En el servicio, suscribirse a `device/{serial}/report` y actualizar `printers.status` / `last_seen_at` en la base de datos.
   RF: RF-1
   Hecho cuando: al simular un reporte MQTT, la fila de esa impresora en `printers` se actualiza.
 
-- [x] **T16.** Endpoint `/api/printers` para registrar una impresora nueva (serial, ip, access_code, name).
+- [ ] **T16.** Endpoint `/api/printers` para registrar una impresora nueva (serial, ip, access_code, name).
   RF: RF-1
   Hecho cuando: un POST válido crea la fila en `printers` y uno inválido devuelve error.
+
+- [ ] **T16b.** Habilitar RLS en `printers` sin ninguna policy para `anon`/`authenticated` (deny-all desde el cliente). Solo el servidor, con `DATABASE_URL` (dueño de la tabla, no sujeto a RLS), puede leer o escribir. Cualquier vista futura que necesite mostrar impresoras en el navegador debe pasar por una ruta de servidor que no incluya `access_code`.
+  RF: RF-1
+  Hecho cuando: una llamada directa a la API de Supabase (no vía `/api/printers` ni el servidor) para leer o escribir `printers` es rechazada, para cualquier rol.
 
 - [ ] **T17.** Chequeo periódico: marcar una impresora como `offline` si no llega un reporte dentro de un umbral de tiempo.
   RF: RF-6
