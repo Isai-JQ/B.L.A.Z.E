@@ -23,6 +23,7 @@ Plataforma web de B.L.A.Z.E v2 para monitorear y controlar un fleet de impresora
 - Ninguna dependencia nueva sin justificarla en `plan.md`.
 - Cualquier cambio de alcance se refleja primero en la spec, nunca directo en código.
 - Nunca se trabaja directo sobre `main`. Cada feature o fix va en su propia branch (ej. `feature/T22-auto-asignacion`, `fix/validacion-archivo`) y se mergea a `main` vía pull request, para mantener `main` siempre limpio y desplegable.
+- Claude no hace commits. Deja los cambios listos en la branch correspondiente; el commit lo hace siempre un usuario humano.
 
 ## Al terminar cualquier tarea
 - Correr `pnpm test` y `pnpm lint`. Marcar la tarea de `tasks.md` como hecha solo si ambos pasan.
