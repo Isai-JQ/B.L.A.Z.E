@@ -81,6 +81,10 @@ El orden de la cola no se persiste como columna: se calcula en cada consulta a p
 5. **Notificaciones in-app únicamente** (tabla `notifications` + Supabase Realtime o polling corto en el cliente).
    Descartada: envío por correo. Se descarta porque no hay proveedor de email configurado y el NFR de la spec ya limita esta iteración a in-app.
 
+## Dependencias añadidas
+
+- **`@supabase/supabase-js`**: cliente oficial para hablar con Supabase Auth desde el navegador (`AuthScreen`, T10). Es el módulo mínimo necesario para el módulo Auth ya definido en este plan; no hay alternativa sin dependencia razonable dado que Supabase es la elección de auth de la constitución.
+
 ## Estrategia de tests
 
 | Test | Qué cubre |
