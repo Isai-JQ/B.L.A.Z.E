@@ -100,7 +100,7 @@ Derivado de `plan.md` (Plan Técnico 001). Cada tarea es de menos de 30 min e in
   RF: RF-3
   Hecho cuando: un archivo válido se acepta y uno con extensión o tamaño incorrecto se rechaza con mensaje claro.
 
-- [ ] **T19.** Al subir un archivo válido, crear la fila en `jobs` con `status = 'queued'` y la `organization_id` del usuario.
+- [x] **T19.** Al subir un archivo válido, crear la fila en `jobs` con `status = 'queued'` y la `organization_id` del usuario.
   RF: RF-2
   Hecho cuando: tras subir un archivo, aparece una fila nueva en `jobs` con los datos correctos.
 
