@@ -198,9 +198,19 @@ Derivado de `plan.md` (Plan Técnico 001). Cada tarea es de menos de 30 min e in
   RF: RF-13
   Hecho cuando: el nuevo orden fijado por el admin se ve igual en la UI y en la base de datos.
 
+## Decisiones
+
+Decisiones de implementación (el *cómo*; el alcance sigue viviendo en la spec).
+
+- **T22 — el gateway corre con `tsx` (`pnpm gateway` = `tsx proxy.cjs`) e importa `lib/queueOrder.ts` directo.**
+  La asignación automática vive en el mismo proceso que habla MQTT (`proxy.cjs`, ver AGENTS.md): cuando `persistReport` marca una impresora como `idle`, consulta los jobs `queued`, ordena con `calculateQueueOrder` y asigna el primero (`printer_id`, `status = 'assigned'`). `proxy.cjs` sigue siendo CommonJS; con `tsx` como runtime puede hacer `require("./lib/queueOrder.ts")` sin duplicar la función de orden ni compilarla aparte. (Node 22.23 también resuelve ese `require` de un `.ts` por sí solo —así lo carga vitest en `proxy.test.mts`—, pero el arranque documentado es `tsx` para no depender de que el type stripping nativo se mantenga estable.) `sweepOffline` no participa: solo pasa impresoras a `offline`; la vuelta a `idle` siempre llega por un reporte, es decir, por `persistReport`.
+  - Alternativa descartada: que el gateway notifique a una API route de Next.js (`pages/api/...`) y la asignación se haga ahí. Descartada porque contradice la decisión de que la asignación viva en el mismo servicio del gateway: metería un salto HTTP y una segunda fuente de verdad sobre el estado del fleet, y obligaría al gateway a conocer la URL/credenciales del dashboard.
+  - La asignación se evalúa en cada reporte `idle`, no solo en la transición: es idempotente (una impresora con un job `assigned`/`printing` no recibe otro, y el `UPDATE` re-verifica `status = 'queued'`, así que dos impresoras que se liberan a la vez no toman el mismo job). Eso también cubre el caso de un job encolado mientras la impresora ya estaba libre, sin lógica extra en el endpoint de subida.
+
 ## Dependencias
 
 Justificación de cada dependencia añadida fuera del scaffold inicial (constitución, regla 10).
 
 - **`ws`** (T14) — servidor WebSocket del gateway (`proxy.cjs`). Node no trae servidor WS (solo cliente, desde v22), y el bridge WS↔TLS es la única forma de que el navegador hable MQTT con la impresora. Misma librería que usaba `proxy.cjs` en `Automatize-3D-printers`.
 - **`mqtt`** (T14) — cliente MQTT del gateway contra la impresora (`mqtts://<ip>:8883`). El servicio necesita su propia sesión MQTT para mantener el estado del fleet en memoria aunque no haya ningún navegador abierto; implementar MQTT 3.1.1 a mano no se justifica. Ya era dependencia del repo de referencia.
+- **`tsx`** (T22, devDependency) — runtime del gateway (`pnpm gateway`) y del seed (`db:seed`, que ya lo usaba vía hoisting de `drizzle-kit` sin declararlo). Permite que `proxy.cjs` importe `lib/queueOrder.ts` tal cual, compartiendo la función de orden con el dashboard sin un paso de build ni una copia en JS.

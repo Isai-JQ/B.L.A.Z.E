@@ -10,7 +10,10 @@
 // independent MQTT client per registered printer. Combined state for the whole fleet is
 // served at GET /printers, each entry keyed by its serial (and DB id when known).
 //
-// Usage: node proxy.cjs
+// T22: when a printer reports itself free, the highest-priority queued job (order from
+// lib/queueOrder.ts) is assigned to it. That import is why this runs under tsx, not node.
+//
+// Usage: pnpm gateway   (= tsx proxy.cjs)
 //        WS_PORT=9001 (default) serves both the WebSocket bridge and GET /printers.
 
 const fs = require("node:fs");
@@ -21,6 +24,7 @@ const { WebSocketServer } = require("ws");
 const { drizzle } = require("drizzle-orm/postgres-js");
 const { sql } = require("drizzle-orm");
 const postgres = require("postgres");
+const { calculateQueueOrder } = require("./lib/queueOrder.ts");
 
 const PRINTER_PORT = 8883;
 const PRINTERS_RELOAD_MS = 30_000;
@@ -97,11 +101,47 @@ const IDLE_GCODE_STATES = new Set(["IDLE", "FINISH"]);
 
 // Mirrors a merged report onto the printer's DB row: `status` is 'printing' while the
 // printer is still busy with a job, 'idle' when it is free; `last_seen_at` = now. (T15)
+// A free printer also pulls the next queued job (T22).
 async function persistReport(db, state) {
   const status = IDLE_GCODE_STATES.has(state.gcodeState) ? "idle" : "printing";
-  await db.execute(
-    sql`update printers set status = ${status}, last_seen_at = now() where serial_number = ${state.serial}`,
+  const [row] = await db.execute(
+    sql`update printers set status = ${status}, last_seen_at = now()
+        where serial_number = ${state.serial} returning id`,
   );
+  if (status === "idle" && row) await assignNextJob(db, row.id);
+}
+
+// Assigns the first job of the calculated queue to a free printer (T22). Returns the
+// job id, or null if nothing was assigned. Idempotent: a printer that already has a job
+// 'assigned'/'printing' gets nothing, and the UPDATE re-checks status = 'queued' so two
+// printers freeing up at once cannot both take the same job (the loser just retries on
+// its next idle report, which is also what picks up a job queued while it sat idle).
+// ponytail: one SELECT per idle report per printer; if that ever shows on the DB, gate
+// it on the idle transition + an enqueue-time trigger instead.
+async function assignNextJob(db, printerId) {
+  const rows = await db.execute(
+    sql`select j.id, j.manual_rank, j.created_at, o.priority_tier
+        from jobs j join organizations o on o.id = j.organization_id
+        where j.status = 'queued'
+          and not exists (select 1 from jobs b
+                          where b.printer_id = ${printerId}
+                            and b.status in ('assigned', 'printing'))`,
+  );
+  const [next] = calculateQueueOrder(
+    rows.map((r) => ({
+      id: r.id,
+      priorityTier: r.priority_tier,
+      createdAt: new Date(r.created_at),
+      manualRank: r.manual_rank,
+    })),
+  );
+  if (!next) return null;
+  const [done] = await db.execute(
+    sql`update jobs set printer_id = ${printerId}, status = 'assigned'
+        where id = ${next.id} and status = 'queued' returning id`,
+  );
+  if (done) console.log(`→ Job ${done.id} assigned to printer ${printerId}`);
+  return done?.id ?? null;
 }
 
 // Persistent MQTT client to one printer. mqtt.js handles reconnection on its own.
@@ -260,6 +300,7 @@ module.exports = {
   sweepOffline,
   handleReport,
   persistReport,
+  assignNextJob,
   printers,
   watched,
 };

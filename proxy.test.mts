@@ -236,3 +236,85 @@ it("marks a stale printer offline on sweep without touching the others (T17)", a
   emit("10.0.0.201", fleet[0].serial, { gcode_state: "RUNNING", mc_percent: 6 });
   await waitForStatus(fleet[0].serial, "printing");
 });
+
+// ---------------------------------------------------------------------------
+// T22: a printer that reports itself free pulls the first job of the calculated
+// queue (tier → FIFO → manual_rank) and gets it as `assigned`. Two orgs: the
+// trigger-provisioned one (tier 2) and a tier-1 one inserted by hand, so the
+// later, higher-priority job must win. A printer holding an assigned job takes
+// nothing more; the next free printer takes what is left.
+// ---------------------------------------------------------------------------
+
+const t22 = {
+  userId: randomUUID(),
+  orgName: `t22-test-org-${suffix}`,
+  topOrgName: `t22-test-top-org-${suffix}`,
+  jobLow: randomUUID(),
+  jobTop: randomUUID(),
+};
+
+// Registered after the T14b afterAll, so with vitest's default "stack" hook order
+// this cleanup runs first — before that hook calls sql.end().
+afterAll(async () => {
+  await sql`delete from jobs where user_id = ${t22.userId}`;
+  await sql`delete from user_profiles where id = ${t22.userId}`;
+  await sql`delete from auth.users where id = ${t22.userId}`;
+  await sql`delete from organizations where name in (${t22.orgName}, ${t22.topOrgName})`;
+});
+
+const jobRow = async (id: string) =>
+  (
+    await sql<{ status: string; printer_id: string | null }[]>`
+      select status, printer_id from jobs where id = ${id}
+    `
+  )[0];
+
+const waitForJobStatus = async (id: string, want: string) => {
+  for (let i = 0; i < 40; i++) {
+    const row = await jobRow(id);
+    if (row.status === want) return row;
+    await sleep(25);
+  }
+  throw new Error(`timeout: job ${id} never reached status=${want}`);
+};
+
+it("assigns the highest-priority queued job to a printer that becomes free (T22)", async () => {
+  await sql`
+    insert into auth.users (id, aud, role, email, raw_user_meta_data)
+    values (${t22.userId}, 'authenticated', 'authenticated', ${`${t22.userId}@blaze.test`},
+            jsonb_build_object('organization_name', ${t22.orgName}::text))
+  `;
+  const [lowOrg] = await sql`select id from organizations where name = ${t22.orgName}`;
+  const [topOrg] = await sql`
+    insert into organizations (name, priority_tier) values (${t22.topOrgName}, 1) returning id
+  `;
+  // Tier-2 job queued first, tier-1 job queued a minute later: tier beats FIFO.
+  await sql`
+    insert into jobs (id, user_id, organization_id, file_name, file_path, status, created_at)
+    values (${t22.jobLow}, ${t22.userId}, ${lowOrg.id}, 'low.gcode', 'pending://t22', 'queued', now() - interval '1 minute'),
+           (${t22.jobTop}, ${t22.userId}, ${topOrg.id}, 'top.gcode', 'pending://t22', 'queued', now())
+  `;
+  const [{ id: printerB }] = await sql`select id from printers where serial_number = ${fleet[1].serial}`;
+  const [{ id: printerA }] = await sql`select id from printers where serial_number = ${fleet[0].serial}`;
+
+  await syncPrinters(db, fakeConnect);
+  const emit = (ip: string, serial: string, print: Record<string, unknown>) =>
+    stubs
+      .find((s) => s.url.includes(ip))!
+      .emit("message", `device/${serial}/report`, Buffer.from(JSON.stringify({ print })));
+
+  // Printer B finishes its print → free → takes the tier-1 job, not the older tier-2 one.
+  emit("10.0.0.202", fleet[1].serial, { gcode_state: "FINISH" });
+  expect(await waitForJobStatus(t22.jobTop, "assigned")).toMatchObject({ printer_id: printerB });
+  expect(await jobRow(t22.jobLow)).toMatchObject({ status: "queued", printer_id: null });
+
+  // B keeps reporting idle while it holds an assigned job: it must not grab a second one.
+  emit("10.0.0.202", fleet[1].serial, { gcode_state: "IDLE" });
+  await waitForStatus(fleet[1].serial, "idle");
+  await sleep(200);
+  expect(await jobRow(t22.jobLow)).toMatchObject({ status: "queued", printer_id: null });
+
+  // Printer A frees up → takes the remaining job.
+  emit("10.0.0.201", fleet[0].serial, { gcode_state: "IDLE" });
+  expect(await waitForJobStatus(t22.jobLow, "assigned")).toMatchObject({ printer_id: printerA });
+});
