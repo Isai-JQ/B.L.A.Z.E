@@ -70,7 +70,7 @@ Derivado de `plan.md` (Plan Técnico 001). Cada tarea es de menos de 30 min e in
 
 ## Fase 3 — Fleet y MQTT Gateway
 
-- [ ] **T14.** Extender `proxy.cjs` a un servicio Node persistente que, además de hacer de bridge WS↔TLS, mantiene en memoria el estado de cada impresora conectada.
+- [x] **T14.** Extender `proxy.cjs` a un servicio Node persistente que, además de hacer de bridge WS↔TLS, mantiene en memoria el estado de cada impresora conectada.
   RF: RF-1, RF-5, RF-6
   Hecho cuando: el servicio corre de forma independiente y expone el estado de al menos una impresora simulada.
 
