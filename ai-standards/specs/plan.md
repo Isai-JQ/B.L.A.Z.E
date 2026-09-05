@@ -198,6 +198,15 @@ Derivado de `plan.md` (Plan Técnico 001). Cada tarea es de menos de 30 min e in
   RF: RF-13
   Hecho cuando: el nuevo orden fijado por el admin se ve igual en la UI y en la base de datos.
 
+## Decisiones
+
+Decisiones de implementación (el *cómo*; el alcance sigue viviendo en la spec).
+
+- **T20 — dónde se guarda el archivo subido: Supabase Storage, bucket privado `print-files` (`public = false`).**
+  El endpoint de subida (`pages/api/jobs/upload.ts`) escribe los bytes con la service-role key —cliente solo-servidor en `lib/supabaseAdmin.ts`— y guarda `"<bucket>/<key>"` en `jobs.file_path`, reemplazando el sentinel `pending://T20-not-implemented` que dejaba T19. El archivo se recupera con `supabaseAdmin().storage.from(bucket).download(key)`. El bucket lo crea `db/sql/002_storage_bucket.sql` (se reaplica solo con `pnpm db:push`).
+  - Alternativa descartada: guardar el archivo en el disco local del servidor (p. ej. `./uploads/`). Descartada porque no sobrevive a redeploys (el filesystem del contenedor es efímero) ni escala a múltiples instancias (cada réplica solo vería sus propios archivos).
+  - El límite de tamaño se aplica sobre los bytes reales mientras se leen (`readCappedBody`), sin confiar en el `Content-Length` declarado (ver nota de T18): si el stream supera `MAX_UPLOAD_BYTES` se corta la subida, no se escribe en Storage y no se crea ninguna fila en `jobs`.
+
 ## Dependencias
 
 Justificación de cada dependencia añadida fuera del scaffold inicial (constitución, regla 10).

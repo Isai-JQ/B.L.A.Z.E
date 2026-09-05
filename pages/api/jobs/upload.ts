@@ -1,47 +1,25 @@
 import type { NextApiRequest, NextApiResponse } from "next";
+import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { jobs, userProfiles } from "@/db/schema";
 
-// T18: validate an uploaded print file (extension + max size), rejecting anything
-// that fails with a clear 400.
+// T18: validate an uploaded print file (extension + declared max size), rejecting
+// anything that fails with a clear 400.
 // T19: on a valid file, insert the jobs row (status 'queued', user_id from the
 // session, organization_id resolved from the caller's user_profiles).
-// The pure validator and createQueuedJob are exported so tests can exercise them
-// without minting a real JWT; the default export is the thin HTTP layer.
+// T20: stream the bytes into a private Supabase Storage bucket, cutting the write
+// off at the *real* size (the client's Content-Length is not trusted, see T18),
+// and store the real object path in jobs.file_path.
+// The pieces below are exported so tests can exercise them without minting a real
+// JWT; the default export is the thin HTTP layer.
 
 const ALLOWED_EXT = [".gcode", ".3mf"];
 
-// ponytail: T20 (persisting the bytes + real path) isn't built yet, so every row
-// lands with this sentinel file_path. Column is NOT NULL, so null isn't an option.
-// T20 replaces this with the real storage location on the same row.
-export const PENDING_FILE_PATH = "pending://T20-not-implemented";
-
-type CreateResult = { status: number; body: unknown };
-
-export async function createQueuedJob(
-  userId: string,
-  fileName: string,
-): Promise<CreateResult> {
-  const [profile] = await db
-    .select({ organizationId: userProfiles.organizationId })
-    .from(userProfiles)
-    .where(eq(userProfiles.id, userId));
-  if (!profile) return { status: 403, body: { error: "no user profile / organization" } };
-
-  const [row] = await db
-    .insert(jobs)
-    .values({
-      userId,
-      organizationId: profile.organizationId,
-      fileName,
-      filePath: PENDING_FILE_PATH,
-      status: "queued",
-    })
-    .returning();
-  return { status: 201, body: row };
-}
+// Private bucket (public: false), created by db/sql/002_storage_bucket.sql.
+export const STORAGE_BUCKET = "print-files";
 
 // Default 200MB, overridable via env without touching code.
 export const MAX_UPLOAD_BYTES = Number(process.env.MAX_UPLOAD_BYTES) || 200 * 1024 * 1024;
@@ -76,7 +54,93 @@ export function validateUpload(
   return { status: 200, body: { ok: true, fileName, sizeBytes } };
 }
 
-// Don't buffer the upload: T18 only validates metadata, it never stores the bytes.
+// Read the request body into memory, bailing the moment the real byte count passes
+// maxBytes — the declared Content-Length is attacker-controlled (see T18 note).
+// ponytail: buffers the whole file in RAM; switch to a streamed storage upload if
+// 200MB jobs start to pressure memory.
+export async function readCappedBody(
+  body: AsyncIterable<Uint8Array>,
+  maxBytes: number = MAX_UPLOAD_BYTES,
+): Promise<Buffer | null> {
+  const chunks: Buffer[] = [];
+  let total = 0;
+  for await (const chunk of body) {
+    total += chunk.byteLength;
+    if (total > maxBytes) return null;
+    chunks.push(Buffer.from(chunk));
+  }
+  return Buffer.concat(chunks);
+}
+
+function objectKey(userId: string, fileName: string): string {
+  const dot = fileName.lastIndexOf(".");
+  const ext = dot >= 0 ? fileName.slice(dot).toLowerCase() : "";
+  return `${userId}/${randomUUID()}${ext}`;
+}
+
+export async function createQueuedJob(
+  userId: string,
+  fileName: string,
+  filePath: string,
+): Promise<Result> {
+  const [profile] = await db
+    .select({ organizationId: userProfiles.organizationId })
+    .from(userProfiles)
+    .where(eq(userProfiles.id, userId));
+  if (!profile) return { status: 403, body: { error: "no user profile / organization" } };
+
+  const [row] = await db
+    .insert(jobs)
+    .values({
+      userId,
+      organizationId: profile.organizationId,
+      fileName,
+      filePath,
+      status: "queued",
+    })
+    .returning();
+  return { status: 201, body: row };
+}
+
+// Full pipeline: validate metadata -> read + cap the bytes -> store in the private
+// bucket -> insert the queued job with the real file_path.
+export async function processUpload(
+  userId: string,
+  fileName: string | undefined,
+  declaredSize: number,
+  body: AsyncIterable<Uint8Array>,
+): Promise<Result> {
+  const meta = validateUpload(fileName, declaredSize);
+  if (meta.status !== 200) return meta;
+  const name = fileName!.trim();
+
+  const bytes = await readCappedBody(body);
+  if (!bytes) {
+    return { status: 413, body: { error: `file exceeds max ${MAX_UPLOAD_BYTES} bytes` } };
+  }
+
+  const key = objectKey(userId, name);
+  const { error } = await supabaseAdmin()
+    .storage.from(STORAGE_BUCKET)
+    .upload(key, bytes, { contentType: "application/octet-stream" });
+  if (error) {
+    return { status: 502, body: { error: `storage upload failed: ${error.message}` } };
+  }
+
+  // ponytail: an orphan object is left if this insert fails; add a cleanup/delete
+  // if that ever shows up in practice.
+  return createQueuedJob(userId, name, `${STORAGE_BUCKET}/${key}`);
+}
+
+// Fetch a stored file back from a jobs.file_path ("<bucket>/<key>").
+export async function downloadJobFile(filePath: string) {
+  const slash = filePath.indexOf("/");
+  return supabaseAdmin()
+    .storage.from(filePath.slice(0, slash))
+    .download(filePath.slice(slash + 1));
+}
+
+// Don't let Next buffer/parse the body: processUpload streams and size-caps it.
 export const config = { api: { bodyParser: false } };
 
 const header = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
@@ -93,10 +157,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     : { data: { user: null }, error: new Error("no token") };
   if (error || !data.user) return res.status(401).json({ error: "authentication required" });
 
-  const fileName = header(req.headers["x-file-name"]);
-  const result = validateUpload(fileName, Number(header(req.headers["content-length"])));
-  if (result.status !== 200) return res.status(result.status).json(result.body);
-
-  const created = await createQueuedJob(data.user.id, fileName!.trim());
+  const created = await processUpload(
+    data.user.id,
+    header(req.headers["x-file-name"]),
+    Number(header(req.headers["content-length"])),
+    req,
+  );
   return res.status(created.status).json(created.body);
 }
