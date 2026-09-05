@@ -82,7 +82,7 @@ Derivado de `plan.md` (Plan Técnico 001). Cada tarea es de menos de 30 min e in
   RF: RF-1
   Hecho cuando: al simular un reporte MQTT, la fila de esa impresora en `printers` se actualiza.
 
-- [ ] **T16.** Endpoint `/api/printers` para registrar una impresora nueva (serial, ip, access_code, name).
+- [x] **T16.** Endpoint `/api/printers` para registrar una impresora nueva (serial, ip, access_code, name).
   RF: RF-1
   Hecho cuando: un POST válido crea la fila en `printers` y uno inválido devuelve error.
 
