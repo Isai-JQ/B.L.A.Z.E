@@ -110,7 +110,7 @@ Derivado de `plan.md` (Plan Técnico 001). Cada tarea es de menos de 30 min e in
 
 ## Fase 5 — Queue Engine
 
-- [ ] **T21.** Función pura que, dado un conjunto de jobs, calcula el orden de la cola (tier de organización → FIFO por `created_at` → `manual_rank` si existe).
+- [x] **T21.** Función pura que, dado un conjunto de jobs, calcula el orden de la cola (tier de organización → FIFO por `created_at` → `manual_rank` si existe).
   RF: RF-4, RF-13
   Hecho cuando: dado un set de jobs de prueba con tiers y timestamps distintos, la función devuelve el orden esperado.
 
