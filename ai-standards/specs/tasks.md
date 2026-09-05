@@ -4,7 +4,7 @@ Derivado de `plan.md` (Plan Técnico 001). Cada tarea es de menos de 30 min e in
 
 ## Fase 0 — Setup del proyecto
 
-- [x] **T1.** Crear repo nuevo con Next.js (Pages Router) + TypeScript + Tailwind CSS, gestionado con pnpm.
+- [ ] **T1.** Crear repo nuevo con Next.js (Pages Router) + TypeScript + Tailwind CSS, gestionado con pnpm.
   RF: — (infraestructura)
   Hecho cuando: `pnpm dev` levanta una página en blanco sin errores.
 
@@ -12,67 +12,71 @@ Derivado de `plan.md` (Plan Técnico 001). Cada tarea es de menos de 30 min e in
   RF: — (infraestructura)
   Hecho cuando: `.env.example` existe en el repo y `.env` real está en `.gitignore`.
 
-- [x] **T3.** Configurar Drizzle ORM (`drizzle.config.ts`) apuntando al proyecto de Supabase.
+- [ ] **T3.** Configurar Drizzle ORM (`drizzle.config.ts`) apuntando al proyecto de Supabase.
   RF: — (infraestructura)
   Hecho cuando: `pnpm db:studio` conecta sin errores a la base de datos.
 
 ## Fase 1 — Modelo de datos
 
-- [x] **T4.** Definir tabla `organizations` (id, name, priority_tier) en el esquema Drizzle.
+- [ ] **T4.** Definir tabla `organizations` (id, name, priority_tier) en el esquema Drizzle.
   RF: RF-9
   Hecho cuando: `pnpm db:push` crea la tabla y se puede insertar una fila de prueba.
 
-- [x] **T5.** Definir tabla `user_profiles` (id, email, organization_id, role) con FK a `organizations`.
+- [ ] **T5.** Definir tabla `user_profiles` (id, email, organization_id, role) con FK a `organizations`.
   RF: RF-9
   Hecho cuando: `pnpm db:push` crea la tabla con la FK aplicada.
 
-- [x] **T6.** Definir tabla `printers` (id, serial_number, name, ip_address, access_code, status, last_seen_at).
+- [ ] **T6.** Definir tabla `printers` (id, serial_number, name, ip_address, access_code, status, last_seen_at).
   RF: RF-1, RF-5, RF-6
   Hecho cuando: `pnpm db:push` crea la tabla y admite los tres valores de `status`.
 
-- [x] **T7.** Definir tabla `jobs` (id, user_id, organization_id, printer_id, file_name, file_path, status, manual_rank, failure_reason, timestamps).
+- [ ] **T7.** Definir tabla `jobs` (id, user_id, organization_id, printer_id, file_name, file_path, status, manual_rank, failure_reason, timestamps).
   RF: RF-2, RF-7, RF-10, RF-11, RF-13
   Hecho cuando: `pnpm db:push` crea la tabla con las FKs a `user_profiles`, `organizations` y `printers`.
 
-- [x] **T8.** Definir tabla `notifications` (id, user_id, job_id, type, message, read_at, created_at).
+- [ ] **T8.** Definir tabla `notifications` (id, user_id, job_id, type, message, read_at, created_at).
   RF: RF-7, RF-10
   Hecho cuando: `pnpm db:push` crea la tabla con las FKs correspondientes.
 
-- [x] **T9.** Sembrar (`seed`) las tres organizaciones conocidas (FrED-Factory tier 1, RoBorregos y VantTec tier 2).
+- [ ] **T9.** Sembrar (`seed`) las tres organizaciones conocidas (FrED-Factory tier 1, RoBorregos y VantTec tier 2).
   RF: RF-4, RF-9
   Hecho cuando: la tabla `organizations` tiene esas tres filas tras correr el script de seed.
 
 ## Fase 2 — Auth
 
-- [x] **T10.** Adaptar `AuthScreen.tsx` del repo anterior: login/registro con Supabase Auth.
+- [ ] **T10.** Adaptar `AuthScreen.tsx` del repo anterior: login/registro con Supabase Auth.
   RF: RF-9
   Hecho cuando: un usuario nuevo puede registrarse e iniciar sesión.
 
-- [x] **T11.** Agregar selector de organización en el registro, con opción de escribir una organización nueva (lista abierta).
+- [ ] **T11.** Agregar selector de organización en el registro, con opción de escribir una organización nueva (lista abierta).
   RF: RF-9
   Hecho cuando: registrar un usuario con una organización no existente la crea automáticamente con `priority_tier` por defecto (2).
 
-- [x] **T11b.** Habilitar RLS en `organizations` y `user_profiles`; mover la creación de organización + perfil al registro a un trigger `SECURITY DEFINER` sobre `auth.users` (en vez de inserts desde el cliente) para que sea compatible con RLS y con la confirmación de email.
+- [ ] **T11b.** Habilitar Row Level Security (RLS) en Supabase para `organizations` y `user_profiles`, con políticas mínimas: cualquier usuario autenticado puede leer `organizations`, pero solo insertar filas nuevas (no editar/borrar las existentes); cada usuario puede leer y actualizar su propia fila de `user_profiles`, nunca la de otro, y nunca su propio campo `role`.
   RF: RF-9
-  Hecho cuando: `organizations` solo permite SELECT a `authenticated` (sin INSERT/UPDATE/DELETE desde el cliente); `user_profiles` solo permite a cada usuario SELECT y UPDATE de su propia fila (`id = auth.uid()`) sin poder cambiar `role`; un test que llama la API de Supabase directamente confirma que leer el perfil de otro usuario y cambiar el propio `role` fallan.
+  Hecho cuando: con RLS activo, una llamada directa a la API de Supabase (no desde la UI) intentando leer el perfil de otro usuario o cambiar el propio `role` es rechazada.
 
-- [x] **T11c.** Envolver el script `db:push` (en `package.json`) para que, después de correr `drizzle-kit push`, siempre reaplique automáticamente las políticas RLS de `db/sql/001_auth_triggers.sql` (y cualquier archivo `db/sql/*.sql` que se agregue después). Nadie debe depender de acordarse de este paso a mano.
+- [ ] **T11c.** Envolver el script `db:push` (en `package.json`) para que, después de correr `drizzle-kit push`, siempre reaplique automáticamente las políticas RLS de `db/sql/001_auth_triggers.sql` (y cualquier archivo `db/sql/*.sql` que se agregue después). Nadie debe depender de acordarse de este paso a mano.
   RF: RF-9
   Hecho cuando: correr `pnpm db:push` una sola vez deja las políticas de `organizations` y `user_profiles` intactas y verificables, sin ningún paso manual adicional.
 
-- [x] **T12.** Asignar `role = 'member'` por defecto al registrarse; documentar cómo promover un usuario a `'admin'` manualmente (sin UI todavía).
+- [ ] **T12.** Asignar `role = 'member'` por defecto al registrarse; documentar cómo promover un usuario a `'admin'` manualmente (sin UI todavía).
   RF: RF-13
   Hecho cuando: existe al menos un usuario de prueba con `role = 'admin'` en la base de datos.
 
-- [x] **T13.** Middleware/guard: bloquear todas las páginas del dashboard a usuarios no autenticados.
+- [ ] **T13.** Middleware/guard: bloquear todas las páginas del dashboard a usuarios no autenticados.
   RF: RF-9
   Hecho cuando: acceder a `/` sin sesión redirige a la pantalla de login.
 
 ## Fase 3 — Fleet y MQTT Gateway
 
-- [x] **T14.** Extender `proxy.cjs` a un servicio Node persistente que, además de hacer de bridge WS↔TLS, mantiene en memoria el estado de cada impresora conectada.
+- [ ] **T14.** Extender `proxy.cjs` a un servicio Node persistente que, además de hacer de bridge WS↔TLS, mantiene en memoria el estado de cada impresora conectada.
   RF: RF-1, RF-5, RF-6
   Hecho cuando: el servicio corre de forma independiente y expone el estado de al menos una impresora simulada.
+
+- [ ] **T14b.** Extender el gateway para que, en vez de tomar una sola impresora por argumentos de CLI, lea las impresoras registradas en la tabla `printers` y abra una conexión MQTT independiente por cada una, con el estado combinado accesible en un solo `GET /printers`.
+  RF: RF-1, RF-5, RF-6
+  Hecho cuando: con dos o más impresoras insertadas en la tabla `printers` (aunque sea a mano, sin esperar a T16), el gateway se conecta a ambas y `GET /printers` devuelve el estado combinado de las dos.
 
 - [ ] **T15.** En el servicio, suscribirse a `device/{serial}/report` y actualizar `printers.status` / `last_seen_at` en la base de datos.
   RF: RF-1
