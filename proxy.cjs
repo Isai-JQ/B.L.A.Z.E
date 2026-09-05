@@ -25,7 +25,7 @@ const postgres = require("postgres");
 const PRINTER_PORT = 8883;
 const PRINTERS_RELOAD_MS = 30_000;
 
-// serial -> last known state. Memory only: writing it back to the `printers` table is T15.
+// serial -> last known state. T15 also mirrors `status` / `last_seen_at` back to the DB row.
 const printers = new Map();
 // DB printer id -> its MQTT client, so a reload only opens clients for new rows.
 const watched = new Map();
@@ -88,9 +88,20 @@ function handleReport(topic, message) {
   return state;
 }
 
+// Mirrors a merged report onto the printer's DB row: `status` is 'printing' while the
+// printer reports a running job, 'idle' otherwise; `last_seen_at` is bumped to now. (T15)
+// ponytail: only gcode_state RUNNING counts as printing; refine if PAUSE/PREPARE need it.
+async function persistReport(db, state) {
+  const status = state.gcodeState === "RUNNING" ? "printing" : "idle";
+  await db.execute(
+    sql`update printers set status = ${status}, last_seen_at = now() where serial_number = ${state.serial}`,
+  );
+}
+
 // Persistent MQTT client to one printer. mqtt.js handles reconnection on its own.
 // `connect` is injectable so tests can supply a stub instead of a real broker.
-function watchPrinter(ip, accessCode, serial, connect = mqtt.connect) {
+// `db`, when given, receives status / last_seen_at writes on every report (T15).
+function watchPrinter(ip, accessCode, serial, connect = mqtt.connect, db = null) {
   const client = connect(`mqtts://${ip}:${PRINTER_PORT}`, {
     username: "bblp",
     password: accessCode,
@@ -111,6 +122,11 @@ function watchPrinter(ip, accessCode, serial, connect = mqtt.connect) {
     const known = printers.has(String(msgTopic).split("/")[1]);
     const state = handleReport(msgTopic, message);
     if (!state) return;
+    if (db) {
+      persistReport(db, state).catch((e) =>
+        console.error("printers persist failed:", e.message),
+      );
+    }
     if (!known) {
       // First sighting: ongoing reports are deltas, so ask for one full dump.
       console.log(`→ Tracking printer ${state.serial}`);
@@ -137,7 +153,7 @@ async function syncPrinters(db, connect = mqtt.connect) {
     console.log(`→ Watching printer ${row.serial_number} @ ${row.ip_address}`);
     watched.set(
       row.id,
-      watchPrinter(row.ip_address, row.access_code, row.serial_number, connect),
+      watchPrinter(row.ip_address, row.access_code, row.serial_number, connect, db),
     );
     bridgeHost ??= row.ip_address;
   }
@@ -214,4 +230,12 @@ if (require.main === module) {
   setInterval(reload, PRINTERS_RELOAD_MS).unref();
 }
 
-module.exports = { start, watchPrinter, syncPrinters, handleReport, printers, watched };
+module.exports = {
+  start,
+  watchPrinter,
+  syncPrinters,
+  handleReport,
+  persistReport,
+  printers,
+  watched,
+};

@@ -11,6 +11,8 @@ import { afterAll, beforeAll, expect, it } from "vitest";
 const { start, syncPrinters, handleReport, printers } =
   createRequire(import.meta.url)("./proxy.cjs");
 
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
 const SERIAL = "01P00A123456789";
 const report = (serial: string, print: Record<string, unknown>) =>
   handleReport(`device/${serial}/report`, Buffer.from(JSON.stringify({ print })));
@@ -159,4 +161,44 @@ it("watches every registered printer and serves their combined state", async () 
   // A second sync is a no-op for rows already watched: no extra clients.
   await syncPrinters(db, fakeConnect);
   expect(stubs.filter((s) => s.url.includes("10.0.0.20"))).toHaveLength(2);
+});
+
+// ---------------------------------------------------------------------------
+// T15: every merged report also writes `status` / `last_seen_at` back to the
+// printer's row. Same T14b stub path: emit a message on a printer's client and
+// then read the row straight from Supabase.
+// ---------------------------------------------------------------------------
+
+const rowFor = async (serial: string) =>
+  (
+    await sql<{ status: string; last_seen_at: string | null }[]>`
+      select status, last_seen_at from printers where serial_number = ${serial}
+    `
+  )[0];
+
+const waitForStatus = async (serial: string, want: string) => {
+  for (let i = 0; i < 40; i++) {
+    const row = await rowFor(serial);
+    if (row.status === want) return row;
+    await sleep(25);
+  }
+  throw new Error(`timeout: ${serial} never reached status=${want}`);
+};
+
+it("writes status and last_seen_at back to the printers row on each report", async () => {
+  await syncPrinters(db, fakeConnect);
+  const client = stubs.find((s) => s.url.includes("10.0.0.201"))!;
+  const emit = (print: Record<string, unknown>) =>
+    client.emit(
+      "message",
+      `device/${fleet[0].serial}/report`,
+      Buffer.from(JSON.stringify({ print })),
+    );
+
+  emit({ gcode_state: "RUNNING", mc_percent: 5 });
+  const printing = await waitForStatus(fleet[0].serial, "printing");
+  expect(Date.parse(printing.last_seen_at as string)).not.toBeNaN();
+
+  emit({ gcode_state: "IDLE" });
+  await waitForStatus(fleet[0].serial, "idle");
 });
