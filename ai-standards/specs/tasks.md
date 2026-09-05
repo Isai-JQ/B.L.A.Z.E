@@ -104,7 +104,7 @@ Derivado de `plan.md` (Plan Técnico 001). Cada tarea es de menos de 30 min e in
   RF: RF-2
   Hecho cuando: tras subir un archivo, aparece una fila nueva en `jobs` con los datos correctos.
 
-- [ ] **T20.** Guardar el archivo subido en almacenamiento (carpeta local o Supabase Storage) y enlazarlo en `jobs.file_path`.
+- [x] **T20.** Guardar el archivo subido en almacenamiento (carpeta local o Supabase Storage) y enlazarlo en `jobs.file_path`.
   RF: RF-2, RF-11
   Hecho cuando: el archivo subido es recuperable a partir de `file_path`.
 
