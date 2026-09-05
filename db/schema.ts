@@ -28,3 +28,31 @@ export const printers = pgTable("printers", {
   status: printerStatus("status").notNull().default("offline"),
   lastSeenAt: timestamp("last_seen_at", { withTimezone: true }),
 });
+
+export const jobStatus = pgEnum("job_status", [
+  "queued",
+  "waiting",
+  "assigned",
+  "printing",
+  "completed",
+  "failed",
+]);
+
+export const jobs = pgTable("jobs", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => userProfiles.id),
+  organizationId: uuid("organization_id")
+    .notNull()
+    .references(() => organizations.id),
+  printerId: uuid("printer_id").references(() => printers.id),
+  fileName: text("file_name").notNull(),
+  filePath: text("file_path").notNull(),
+  status: jobStatus("status").notNull().default("queued"),
+  manualRank: integer("manual_rank"),
+  failureReason: text("failure_reason"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  startedAt: timestamp("started_at", { withTimezone: true }),
+  finishedAt: timestamp("finished_at", { withTimezone: true }),
+});
