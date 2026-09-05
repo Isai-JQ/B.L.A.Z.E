@@ -38,7 +38,7 @@ Derivado de `plan.md` (Plan Técnico 001). Cada tarea es de menos de 30 min e in
   RF: RF-7, RF-10
   Hecho cuando: `pnpm db:push` crea la tabla con las FKs correspondientes.
 
-- [ ] **T9.** Sembrar (`seed`) las tres organizaciones conocidas (FrED-Factory tier 1, RoBorregos y VantTec tier 2).
+- [x] **T9.** Sembrar (`seed`) las tres organizaciones conocidas (FrED-Factory tier 1, RoBorregos y VantTec tier 2).
   RF: RF-4, RF-9
   Hecho cuando: la tabla `organizations` tiene esas tres filas tras correr el script de seed.
 
