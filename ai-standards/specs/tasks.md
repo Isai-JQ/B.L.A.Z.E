@@ -96,7 +96,7 @@ Derivado de `plan.md` (Plan Técnico 001). Cada tarea es de menos de 30 min e in
 
 ## Fase 4 — Jobs
 
-- [ ] **T18.** Endpoint de subida de archivo con validación de extensión (`.gcode`/`.3mf`) y tamaño máximo.
+- [x] **T18.** Endpoint de subida de archivo con validación de extensión (`.gcode`/`.3mf`) y tamaño máximo.
   RF: RF-3
   Hecho cuando: un archivo válido se acepta y uno con extensión o tamaño incorrecto se rechaza con mensaje claro.
 
