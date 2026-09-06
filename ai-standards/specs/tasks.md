@@ -130,7 +130,7 @@ Derivado de `plan.md` (Plan Técnico 001). Cada tarea es de menos de 30 min e in
   RF: RF-10
   Hecho cuando: con todas las impresoras ocupadas/offline, un job nuevo queda en `waiting` y genera una notificación.
 
-- [ ] **T26.** Endpoint para que un admin fije `manual_rank` en uno o más jobs, y que el cálculo de la cola lo respete.
+- [x] **T26.** Endpoint para que un admin fije `manual_rank` en uno o más jobs, y que el cálculo de la cola lo respete.
   RF: RF-13
   Hecho cuando: un usuario con `role = 'admin'` puede cambiar el orden de dos jobs y la cola calculada refleja el cambio; un usuario `member` recibe error al intentarlo.
 
