@@ -1,0 +1,281 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <style>
+    body { margin: 0; font-family: Arial, Helvetica, sans-serif; background: #080A12; color: #ECECEE; -webkit-font-smoothing: antialiased; }
+    * { box-sizing: border-box; }
+    a { color: #6E9BF0; text-decoration: none; }
+    a:hover { color: #9DBEF7; }
+    h1 { margin: 0; font-size: 20px; font-weight: 700; color: #ffffff; letter-spacing: -0.01em; }
+    h2 { margin: 0 0 12px; font-size: 13px; font-weight: 700; color: #C8CACF; letter-spacing: 0.02em; }
+    .mono { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+
+    .app { display: flex; min-height: 1000px; }
+    .side { width: 224px; flex-shrink: 0; background: #12151F; border-right: 1px solid #232734; display: flex; flex-direction: column; padding: 20px 14px; }
+    .brand { display: flex; align-items: center; gap: 9px; padding: 4px 6px 20px; }
+    .brand .glyph { width: 26px; height: 26px; border-radius: 7px; background: #0033A0; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 800; font-size: 13px; }
+    .brand .wm { font-weight: 800; font-size: 15px; letter-spacing: 0.14em; color: #fff; }
+    .navgroup { display: flex; flex-direction: column; gap: 3px; }
+    .nav { display: flex; align-items: center; gap: 11px; padding: 9px 12px; border-radius: 8px; color: #A0A1A6; font-size: 14px; font-weight: 600; }
+    .nav svg { width: 18px; height: 18px; flex-shrink: 0; }
+    .nav:hover { background: #1A1E2B; color: #CED0D5; }
+    .nav.active { background: #232734; color: #fff; box-shadow: inset 3px 0 0 #2E5AD6; }
+    .nav .lock { margin-left: auto; }
+    .nav .lock svg { width: 13px; height: 13px; color: #74757B; }
+    .side .spacer { flex: 1; }
+    .userchip { display: flex; align-items: center; gap: 10px; padding: 10px; border-radius: 9px; background: #0C0F18; border: 1px solid #232734; }
+    .collab { margin-top: 16px; padding-top: 15px; border-top: 1px solid #232734; opacity: 0.5; transition: opacity 0.15s ease; }
+    .collab:hover { opacity: 0.82; }
+    .collab-cap { font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; color: #74757B; margin-bottom: 12px; }
+    .collab-logos { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; }
+    .collab-logos img { width: auto; display: block; }
+    .collab-logos .l-fred { height: 24px; }
+    .collab-logos .l-tec { height: 15px; }
+    .collab-logos .l-mit { height: 13px; }
+    .avatar { width: 30px; height: 30px; border-radius: 999px; background: #333846; color: #ECECEE; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 12px; }
+    .userchip .who { min-width: 0; }
+    .userchip .em { font-size: 12px; color: #ECECEE; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .userchip .rl { font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; color: #74757B; }
+
+    .main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+    .top { display: flex; align-items: flex-start; justify-content: space-between; padding: 18px 32px; border-bottom: 1px solid #232734; }
+    .sub { margin: 4px 0 0; font-size: 13px; color: #A0A1A6; }
+    .topright { display: flex; align-items: center; gap: 18px; padding-top: 2px; }
+    .live { display: flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 700; color: #46B877; }
+    .live .p { width: 8px; height: 8px; border-radius: 999px; background: #1F9D57; animation: pulse 2s infinite; }
+    @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(31,157,87,0.5); } 70% { box-shadow: 0 0 0 7px rgba(31,157,87,0); } 100% { box-shadow: 0 0 0 0 rgba(31,157,87,0); } }
+    .upd { font-size: 12px; color: #74757B; }
+    .bell { position: relative; color: #A0A1A6; }
+    .bell svg { width: 19px; height: 19px; }
+    .bell .n { position: absolute; top: -5px; right: -5px; min-width: 15px; height: 15px; padding: 0 3px; border-radius: 999px; background: #A31F34; color: #fff; font-size: 10px; font-weight: 800; display: flex; align-items: center; justify-content: center; }
+
+    .content { padding: 26px 32px 36px; }
+    .qbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 22px; }
+    .tally { font-size: 13px; color: #A0A1A6; }
+    .tally b { color: #ECECEE; }
+    .chips { display: flex; gap: 8px; }
+    .chip { font-size: 12px; font-weight: 700; padding: 6px 12px; border-radius: 999px; border: 1px solid #232734; color: #A0A1A6; background: transparent; cursor: pointer; }
+    .chip.on { background: #232734; color: #fff; border-color: #333846; }
+
+    .running { display: flex; flex-direction: column; gap: 8px; margin-bottom: 28px; }
+    .rrow { display: flex; align-items: center; gap: 14px; background: #0C0F18; border: 1px solid #232734; border-radius: 9px; padding: 11px 16px; }
+    .rrow .pn { font-size: 12px; font-weight: 800; color: #6E9BF0; width: 56px; }
+    .rrow .rf { font-size: 13px; color: #C8CACF; flex: 1; }
+    .rrow .ro { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 6px; background: #232734; color: #C8CACF; }
+    .rrow .ro.fred { background: rgba(217,164,65,0.14); color: #D9A441; }
+    .rrow .rbar { width: 120px; height: 6px; background: #232734; border-radius: 999px; overflow: hidden; }
+    .rrow .rbar i { display: block; height: 100%; background: #2E5AD6; }
+    .rrow .rpct { font-size: 12px; font-weight: 700; color: #A0A1A6; width: 38px; text-align: right; }
+
+    .tablewrap { background: #12151F; border: 1px solid #232734; border-radius: 11px; overflow: hidden; }
+    table { width: 100%; border-collapse: collapse; }
+    th { text-align: left; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: #74757B; font-weight: 700; padding: 14px 16px 12px; background: #0E1119; }
+    td { padding: 15px 16px; border-top: 1px solid #232734; font-size: 13px; color: #ECECEE; vertical-align: middle; }
+    tr:hover td { background: #161A26; }
+    .posn { font-weight: 800; color: #fff; font-size: 14px; display: inline-flex; align-items: center; gap: 8px; }
+    .mchip { font-size: 9px; font-weight: 800; letter-spacing: 0.06em; color: #6E9BF0; background: rgba(46,90,214,0.16); border: 1px solid rgba(46,90,214,0.4); padding: 2px 6px; border-radius: 5px; }
+    .manual td { background: rgba(46,90,214,0.05); }
+    .manual td:first-child { box-shadow: inset 3px 0 0 #2E5AD6; }
+    .fname { color: #ECECEE; }
+    .youtag { font-size: 9px; font-weight: 800; letter-spacing: 0.06em; color: #46B877; background: rgba(70,184,119,0.12); padding: 2px 6px; border-radius: 5px; margin-left: 8px; }
+    .prio { font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 999px; }
+    .prio.alta { background: rgba(217,164,65,0.14); color: #D9A441; }
+    .prio.std { background: #232734; color: #A0A1A6; }
+    .st { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 800; padding: 4px 9px; border-radius: 999px; border: 1px solid transparent; }
+    .st .d { width: 6px; height: 6px; border-radius: 999px; }
+    .st-queued { background: #232734; color: #A0A1A6; } .st-queued .d { background: #74757B; }
+    .st-wait { background: rgba(217,164,65,0.14); color: #D9A441; border-color: rgba(217,164,65,0.3); } .st-wait .d { background: #D9A441; }
+    .st-assigned { background: rgba(46,90,214,0.14); color: #6E9BF0; border-color: rgba(46,90,214,0.35); } .st-assigned .d { background: #3B6FE0; }
+    .muted { color: #74757B; }
+
+    .legend { display: flex; gap: 10px; margin-top: 18px; font-size: 12px; color: #A0A1A6; line-height: 1.6; background: #0C0F18; border: 1px solid #232734; border-radius: 9px; padding: 13px 16px; }
+    .legend svg { width: 16px; height: 16px; color: #74757B; flex-shrink: 0; margin-top: 1px; }
+    .legend b { color: #C8CACF; font-weight: 700; }
+  </style>
+</helmet>
+
+<div class="app">
+  <aside class="side">
+    <div class="brand"><span class="glyph">B</span><span class="wm">B.L.A.Z.E</span></div>
+    <div class="navgroup">
+      <div class="nav">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+        Fleet
+      </div>
+      <div class="nav active">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><line x1="9" y1="6" x2="20" y2="6"/><line x1="9" y1="12" x2="20" y2="12"/><line x1="9" y1="18" x2="20" y2="18"/><circle cx="4.5" cy="6" r="1.3" fill="currentColor" stroke="none"/><circle cx="4.5" cy="12" r="1.3" fill="currentColor" stroke="none"/><circle cx="4.5" cy="18" r="1.3" fill="currentColor" stroke="none"/></svg>
+        Cola de trabajos
+      </div>
+      <div class="nav">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
+        Reordenar cola
+        <span class="lock"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>
+      </div>
+    </div>
+    <div class="spacer"></div>
+    <div class="userchip">
+      <div class="avatar">AL</div>
+      <div class="who">
+        <div class="em">a.luna@roborregos.com</div>
+        <div class="rl">RoBorregos · Miembro</div>
+      </div>
+    </div>
+    <div class="collab">
+      <div class="collab-cap">En colaboración con</div>
+      <div class="collab-logos">
+        <img class="l-fred" src="logo-fred.png" alt="FrED Factory">
+        <img class="l-tec" src="logo-tec.png" alt="Tecnológico de Monterrey">
+        <img class="l-mit" src="logo-mit.png" alt="MIT">
+      </div>
+    </div>
+  </aside>
+
+  <div class="main">
+    <div class="top">
+      <div>
+        <h1>Cola de trabajos</h1>
+        <p class="sub">Todos los trabajos del laboratorio · orden por prioridad de organización + FIFO</p>
+      </div>
+      <div class="topright">
+        <span class="live"><span class="p"></span>EN VIVO</span>
+        <span class="upd">Actualizado hace 4 s</span>
+        <span class="bell">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+          <span class="n">2</span>
+        </span>
+      </div>
+    </div>
+
+    <div class="content">
+      <div class="qbar">
+        <div class="tally"><b>8</b> trabajos pendientes<span style="color:#333846;margin:0 8px">·</span><b>3</b> en impresora<span style="color:#333846;margin:0 8px">·</span>1 en lista de espera</div>
+        <div class="chips">
+          <button class="chip on">Todos</button>
+          <button class="chip">Míos</button>
+          <button class="chip">Por organización</button>
+        </div>
+      </div>
+
+      <h2>En impresoras ahora</h2>
+      <div class="running">
+        <div class="rrow"><span class="pn">P1S-02</span><span class="rf mono">chasis_fred_rev2.3mf</span><span class="ro fred">FrED-Factory</span><span class="rbar"><i style="width:12%"></i></span><span class="rpct">12%</span></div>
+        <div class="rrow"><span class="pn">P1S-01</span><span class="rf mono">soporte_v3.gcode</span><span class="ro">RoBorregos</span><span class="rbar"><i style="width:62%"></i></span><span class="rpct">62%</span></div>
+        <div class="rrow"><span class="pn">P1S-04</span><span class="rf mono">bracket_x2.gcode</span><span class="ro">VantTec</span><span class="rbar"><i style="width:94%"></i></span><span class="rpct">94%</span></div>
+      </div>
+
+      <h2>En cola — 8 pendientes</h2>
+      <div class="tablewrap">
+        <table>
+          <thead>
+            <tr>
+              <th style="width: 92px">Pos.</th>
+              <th>Archivo</th>
+              <th style="width: 150px">Organización</th>
+              <th style="width: 110px">Prioridad</th>
+              <th style="width: 140px">Estado</th>
+              <th style="width: 110px">Impresora</th>
+              <th style="width: 90px">Enviado</th>
+              <th style="width: 150px">Espera estimada</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="manual">
+              <td><span class="posn">1 <span class="mchip">MANUAL</span></span></td>
+              <td><span class="fname mono">junta_motor.gcode</span></td>
+              <td><span class="prio alta" style="background:rgba(217,164,65,0.14);color:#D9A441">FrED-Factory</span></td>
+              <td><span class="prio alta">Fijado</span></td>
+              <td><span class="st st-assigned"><span class="d"></span>Asignado</span></td>
+              <td class="mono">P1S-03</td>
+              <td class="muted">13:58</td>
+              <td class="muted">~1 min</td>
+            </tr>
+            <tr>
+              <td><span class="posn">2</span></td>
+              <td><span class="fname mono">perfil_ala_v4.3mf</span></td>
+              <td>FrED-Factory</td>
+              <td><span class="prio alta">Alta</span></td>
+              <td><span class="st st-queued"><span class="d"></span>En cola</span></td>
+              <td class="muted">—</td>
+              <td class="muted">13:22</td>
+              <td class="muted">~50 min</td>
+            </tr>
+            <tr>
+              <td><span class="posn">3</span></td>
+              <td><span class="fname mono">mount_lidar.gcode</span></td>
+              <td>FrED-Factory</td>
+              <td><span class="prio alta">Alta</span></td>
+              <td><span class="st st-queued"><span class="d"></span>En cola</span></td>
+              <td class="muted">—</td>
+              <td class="muted">13:47</td>
+              <td class="muted">~55 min</td>
+            </tr>
+            <tr>
+              <td><span class="posn">4</span></td>
+              <td><span class="fname mono">soporte_cam.gcode</span><span class="youtag">TÚ</span></td>
+              <td>RoBorregos</td>
+              <td><span class="prio std">Estándar</span></td>
+              <td><span class="st st-queued"><span class="d"></span>En cola</span></td>
+              <td class="muted">—</td>
+              <td class="muted">12:15</td>
+              <td class="muted">~1 h 40 min</td>
+            </tr>
+            <tr>
+              <td><span class="posn">5</span></td>
+              <td><span class="fname mono">base_v2.gcode</span></td>
+              <td>VantTec</td>
+              <td><span class="prio std">Estándar</span></td>
+              <td><span class="st st-queued"><span class="d"></span>En cola</span></td>
+              <td class="muted">—</td>
+              <td class="muted">12:31</td>
+              <td class="muted">~1 h 45 min</td>
+            </tr>
+            <tr>
+              <td><span class="posn">6</span></td>
+              <td><span class="fname mono">clip_bateria.3mf</span></td>
+              <td>RoBorregos</td>
+              <td><span class="prio std">Estándar</span></td>
+              <td><span class="st st-queued"><span class="d"></span>En cola</span></td>
+              <td class="muted">—</td>
+              <td class="muted">12:58</td>
+              <td class="muted">~2 h</td>
+            </tr>
+            <tr>
+              <td><span class="posn">7</span></td>
+              <td><span class="fname mono">engrane_20t.gcode</span></td>
+              <td>Astro Club</td>
+              <td><span class="prio std">Estándar</span></td>
+              <td><span class="st st-wait"><span class="d"></span>En espera</span></td>
+              <td class="muted">—</td>
+              <td class="muted">13:05</td>
+              <td class="muted">Sin impresora libre</td>
+            </tr>
+            <tr>
+              <td><span class="posn">8</span></td>
+              <td><span class="fname mono">carcasa_final.3mf</span></td>
+              <td>VantTec</td>
+              <td><span class="prio std">Estándar</span></td>
+              <td><span class="st st-queued"><span class="d"></span>En cola</span></td>
+              <td class="muted">—</td>
+              <td class="muted">13:19</td>
+              <td class="muted">~2 h 30 min</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="legend">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+        <span>El orden se calcula por <b>prioridad de organización</b> (FrED-Factory por encima; RoBorregos, VantTec y demás grupos comparten el mismo nivel) y, dentro del mismo nivel, por <b>orden de llegada (FIFO)</b>. Los trabajos marcados <b>MANUAL</b> fueron fijados por un administrador y van por encima de este orden automático.</span>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

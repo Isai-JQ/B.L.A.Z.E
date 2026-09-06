@@ -1,0 +1,357 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <style>
+    body { margin: 0; font-family: Arial, Helvetica, sans-serif; background: #080A12; color: #ECECEE; -webkit-font-smoothing: antialiased; }
+    * { box-sizing: border-box; }
+    a { color: #6E9BF0; text-decoration: none; }
+    a:hover { color: #9DBEF7; }
+    h1 { margin: 0; font-size: 20px; font-weight: 700; color: #ffffff; letter-spacing: -0.01em; }
+    .mono { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+
+    .app { display: flex; min-height: 1000px; }
+    .side { width: 224px; flex-shrink: 0; background: #12151F; border-right: 1px solid #232734; display: flex; flex-direction: column; padding: 20px 14px; }
+    .brand { display: flex; align-items: center; gap: 9px; padding: 4px 6px 20px; }
+    .brand .glyph { width: 26px; height: 26px; border-radius: 7px; background: #0033A0; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 800; font-size: 13px; }
+    .brand .wm { font-weight: 800; font-size: 15px; letter-spacing: 0.14em; color: #fff; }
+    .navgroup { display: flex; flex-direction: column; gap: 3px; }
+    .navcap { font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: #4F5058; padding: 10px 8px 6px; }
+    .nav { display: flex; align-items: center; gap: 11px; padding: 9px 12px; border-radius: 8px; color: #A0A1A6; font-size: 14px; font-weight: 600; }
+    .nav svg { width: 18px; height: 18px; flex-shrink: 0; }
+    .nav:hover { background: #1A1E2B; color: #CED0D5; }
+    .nav.active { background: #232734; color: #fff; box-shadow: inset 3px 0 0 #2E5AD6; }
+    .nav .lock { margin-left: auto; }
+    .nav .lock svg { width: 13px; height: 13px; color: #74757B; }
+    .side .spacer { flex: 1; }
+    .userchip { display: flex; align-items: center; gap: 10px; padding: 10px; border-radius: 9px; background: #0C0F18; border: 1px solid #232734; }
+    .collab { margin-top: 16px; padding-top: 15px; border-top: 1px solid #232734; opacity: 0.5; transition: opacity 0.15s ease; }
+    .collab:hover { opacity: 0.82; }
+    .collab-cap { font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; color: #74757B; margin-bottom: 12px; }
+    .collab-logos { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; }
+    .collab-logos img { width: auto; display: block; }
+    .collab-logos .l-fred { height: 24px; }
+    .collab-logos .l-tec { height: 15px; }
+    .collab-logos .l-mit { height: 13px; }
+    .avatar { width: 30px; height: 30px; border-radius: 999px; background: #333846; color: #ECECEE; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 12px; }
+    .userchip .who { min-width: 0; }
+    .userchip .em { font-size: 12px; color: #ECECEE; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .userchip .rl { font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; color: #74757B; }
+
+    .main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+    .top { display: flex; align-items: flex-start; justify-content: space-between; padding: 18px 32px; border-bottom: 1px solid #232734; }
+    .sub { margin: 4px 0 0; font-size: 13px; color: #A0A1A6; }
+    .topright { display: flex; align-items: center; gap: 18px; padding-top: 2px; }
+    .live { display: flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 700; color: #46B877; }
+    .live .p { width: 8px; height: 8px; border-radius: 999px; background: #1F9D57; box-shadow: 0 0 0 0 rgba(31,157,87,0.6); animation: pulse 2s infinite; }
+    @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(31,157,87,0.5); } 70% { box-shadow: 0 0 0 7px rgba(31,157,87,0); } 100% { box-shadow: 0 0 0 0 rgba(31,157,87,0); } }
+    .upd { font-size: 12px; color: #74757B; }
+    .bell { position: relative; color: #A0A1A6; }
+    .bell svg { width: 19px; height: 19px; }
+    .bell .n { position: absolute; top: -5px; right: -5px; min-width: 15px; height: 15px; padding: 0 3px; border-radius: 999px; background: #A31F34; color: #fff; font-size: 10px; font-weight: 800; display: flex; align-items: center; justify-content: center; }
+
+    .content { padding: 26px 32px 36px; }
+    .fleetbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
+    .tally { font-size: 13px; color: #A0A1A6; }
+    .tally b { color: #ECECEE; }
+    .tally .sep { color: #333846; margin: 0 8px; }
+    .chips { display: flex; gap: 8px; }
+    .chip { font-size: 12px; font-weight: 700; padding: 6px 12px; border-radius: 999px; border: 1px solid #232734; color: #A0A1A6; background: transparent; cursor: pointer; }
+    .chip.on { background: #232734; color: #fff; border-color: #333846; }
+
+    .grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
+    .card { background: #12151F; border: 1px solid #232734; border-radius: 11px; padding: 18px; display: flex; flex-direction: column; }
+    .card.off { opacity: 0.62; }
+    .chead { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+    .pname { font-size: 15px; font-weight: 700; color: #fff; }
+    .pserial { font-size: 11px; color: #74757B; margin-top: 2px; }
+    .badge { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 800; padding: 4px 9px; border-radius: 999px; border: 1px solid transparent; letter-spacing: 0.02em; white-space: nowrap; }
+    .badge .d { width: 7px; height: 7px; border-radius: 999px; }
+    .b-print { background: rgba(46,90,214,0.14); color: #6E9BF0; border-color: rgba(46,90,214,0.35); }
+    .b-print .d { background: #3B6FE0; }
+    .b-free { background: rgba(70,184,119,0.12); color: #46B877; border-color: rgba(70,184,119,0.3); }
+    .b-free .d { background: #1F9D57; }
+    .b-off { background: rgba(163,31,52,0.12); color: #E27686; border-color: rgba(163,31,52,0.3); }
+    .b-off .d { background: #A31F34; }
+
+    .prog { margin-top: 16px; }
+    .progtop { display: flex; align-items: baseline; justify-content: space-between; }
+    .pct { font-size: 20px; font-weight: 800; color: #fff; }
+    .pmeta { font-size: 12px; color: #A0A1A6; }
+    .bar { height: 7px; background: #232734; border-radius: 999px; overflow: hidden; margin-top: 8px; }
+    .fill { height: 100%; background: #2E5AD6; border-radius: 999px; }
+    .fill.near { background: #1F9D57; }
+
+    .job { display: flex; align-items: center; gap: 8px; margin-top: 14px; }
+    .jfile { font-size: 13px; color: #ECECEE; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .org { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 6px; background: #232734; color: #C8CACF; white-space: nowrap; }
+    .org.fred { background: rgba(217,164,65,0.14); color: #D9A441; }
+
+    .temps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 14px; }
+    .temp { display: flex; align-items: center; gap: 8px; background: #0C0F18; border: 1px solid #232734; border-radius: 8px; padding: 8px 9px; }
+    .temp svg { width: 14px; height: 14px; color: #74757B; flex-shrink: 0; }
+    .tval { font-size: 13px; font-weight: 700; color: #ECECEE; }
+    .tval span { font-size: 10px; font-weight: 600; color: #74757B; }
+    .tlbl { font-size: 9px; text-transform: uppercase; letter-spacing: 0.06em; color: #A0A1A6; margin-top: 1px; }
+
+    .metarow { display: flex; align-items: center; justify-content: space-between; margin-top: 13px; }
+    .ams { display: flex; align-items: center; gap: 7px; font-size: 12px; color: #C8CACF; }
+    .swatch { width: 12px; height: 12px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.15); }
+    .gstate { font-size: 10px; font-weight: 800; letter-spacing: 0.08em; color: #A0A1A6; background: #232734; padding: 3px 7px; border-radius: 5px; }
+
+    .rest { font-size: 13px; color: #A0A1A6; margin-top: 16px; }
+    .rest.warn { color: #E27686; }
+
+    .ctrls { display: flex; gap: 8px; margin-top: 16px; padding-top: 14px; border-top: 1px solid #232734; }
+    .btn { font: inherit; font-size: 13px; font-weight: 700; padding: 8px 14px; border-radius: 8px; border: 1px solid #333846; background: transparent; color: #CED0D5; cursor: pointer; }
+    .btn:hover { background: #232734; }
+    .btn svg { width: 14px; height: 14px; vertical-align: -2px; margin-right: 5px; }
+    .btn-danger { border-color: #7A1626; color: #E27686; }
+    .btn-danger:hover { background: #7A1626; color: #fff; }
+    .btn-ghost { border-color: #232734; color: #A0A1A6; }
+    .card .grow { flex: 1; }
+  </style>
+</helmet>
+
+<div class="app">
+  <!-- Sidebar -->
+  <aside class="side">
+    <div class="brand"><span class="glyph">B</span><span class="wm">B.L.A.Z.E</span></div>
+    <div class="navgroup">
+      <div class="nav active">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+        Fleet
+      </div>
+      <div class="nav">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><line x1="9" y1="6" x2="20" y2="6"/><line x1="9" y1="12" x2="20" y2="12"/><line x1="9" y1="18" x2="20" y2="18"/><circle cx="4.5" cy="6" r="1.3" fill="currentColor" stroke="none"/><circle cx="4.5" cy="12" r="1.3" fill="currentColor" stroke="none"/><circle cx="4.5" cy="18" r="1.3" fill="currentColor" stroke="none"/></svg>
+        Cola de trabajos
+      </div>
+      <div class="nav">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
+        Reordenar cola
+        <span class="lock"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>
+      </div>
+    </div>
+    <div class="spacer"></div>
+    <div class="userchip">
+      <div class="avatar">AL</div>
+      <div class="who">
+        <div class="em">a.luna@roborregos.com</div>
+        <div class="rl">RoBorregos · Miembro</div>
+      </div>
+    </div>
+    <div class="collab">
+      <div class="collab-cap">En colaboración con</div>
+      <div class="collab-logos">
+        <img class="l-fred" src="logo-fred.png" alt="FrED Factory">
+        <img class="l-tec" src="logo-tec.png" alt="Tecnológico de Monterrey">
+        <img class="l-mit" src="logo-mit.png" alt="MIT">
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <div class="main">
+    <div class="top">
+      <div>
+        <h1>Fleet en tiempo real</h1>
+        <p class="sub">Telemetría MQTT directa de cada impresora Bambu Lab P1S</p>
+      </div>
+      <div class="topright">
+        <span class="live"><span class="p"></span>EN VIVO</span>
+        <span class="upd">Actualizado hace 2 s</span>
+        <span class="bell">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+          <span class="n">2</span>
+        </span>
+      </div>
+    </div>
+
+    <div class="content">
+      <div class="fleetbar">
+        <div class="tally"><b>6</b> impresoras<span class="sep">·</span><b>3</b> imprimiendo<span class="sep">·</span><b>2</b> libres<span class="sep">·</span><b>1</b> offline</div>
+        <div class="chips">
+          <button class="chip on">Todas</button>
+          <button class="chip">Imprimiendo</button>
+          <button class="chip">Libres</button>
+          <button class="chip">Offline</button>
+        </div>
+      </div>
+
+      <div class="grid">
+        <!-- P1S-01 printing -->
+        <div class="card">
+          <div class="chead">
+            <div><div class="pname">P1S-01</div><div class="pserial mono">01P00A3B1900123</div></div>
+            <span class="badge b-print"><span class="d"></span>Imprimiendo</span>
+          </div>
+          <div class="prog">
+            <div class="progtop"><span class="pct">62%</span><span class="pmeta">Capa 198 / 320</span></div>
+            <div class="bar"><div class="fill" style="width: 62%"></div></div>
+          </div>
+          <div class="job"><span class="jfile mono">soporte_v3.gcode</span><span class="org">RoBorregos</span></div>
+          <div class="temps">
+            <div class="temp"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 14.76V4.5a2.5 2.5 0 0 0-5 0v10.26a4.5 4.5 0 1 0 5 0z"/></svg><div><div class="tval">221°<span> / 220°</span></div><div class="tlbl">Nozzle</div></div></div>
+            <div class="temp"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="14" width="18" height="6" rx="1"/><path d="M7 14V9M12 14V7M17 14V9"/></svg><div><div class="tval">60°<span> / 60°</span></div><div class="tlbl">Cama</div></div></div>
+            <div class="temp"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18"/></svg><div><div class="tval">34°</div><div class="tlbl">Cámara</div></div></div>
+          </div>
+          <div class="metarow">
+            <span class="ams"><span class="swatch" style="background: #14161c"></span>PLA Negro Galaxy</span>
+            <span class="gstate">RUNNING</span>
+          </div>
+          <div class="rest">~48 min restantes · fin 15:12</div>
+          <div class="grow"></div>
+          <div class="ctrls">
+            <button class="btn"><svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14"/><rect x="14" y="5" width="4" height="14"/></svg>Pausar</button>
+            <button class="btn btn-danger"><svg viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="5" width="14" height="14" rx="2"/></svg>Detener</button>
+          </div>
+        </div>
+
+        <!-- P1S-02 printing FrED -->
+        <div class="card">
+          <div class="chead">
+            <div><div class="pname">P1S-02</div><div class="pserial mono">01P00A3B1900147</div></div>
+            <span class="badge b-print"><span class="d"></span>Imprimiendo</span>
+          </div>
+          <div class="prog">
+            <div class="progtop"><span class="pct">12%</span><span class="pmeta">Capa 40 / 540</span></div>
+            <div class="bar"><div class="fill" style="width: 12%"></div></div>
+          </div>
+          <div class="job"><span class="jfile mono">chasis_fred_rev2.3mf</span><span class="org fred">FrED-Factory</span></div>
+          <div class="temps">
+            <div class="temp"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 14.76V4.5a2.5 2.5 0 0 0-5 0v10.26a4.5 4.5 0 1 0 5 0z"/></svg><div><div class="tval">249°<span> / 250°</span></div><div class="tlbl">Nozzle</div></div></div>
+            <div class="temp"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="14" width="18" height="6" rx="1"/><path d="M7 14V9M12 14V7M17 14V9"/></svg><div><div class="tval">92°<span> / 90°</span></div><div class="tlbl">Cama</div></div></div>
+            <div class="temp"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18"/></svg><div><div class="tval">41°</div><div class="tlbl">Cámara</div></div></div>
+          </div>
+          <div class="metarow">
+            <span class="ams"><span class="swatch" style="background: #e0602a"></span>ABS Naranja</span>
+            <span class="gstate">RUNNING</span>
+          </div>
+          <div class="rest">~5 h 10 min restantes · fin 20:34</div>
+          <div class="grow"></div>
+          <div class="ctrls">
+            <button class="btn"><svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14"/><rect x="14" y="5" width="4" height="14"/></svg>Pausar</button>
+            <button class="btn btn-danger"><svg viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="5" width="14" height="14" rx="2"/></svg>Detener</button>
+          </div>
+        </div>
+
+        <!-- P1S-03 idle -->
+        <div class="card">
+          <div class="chead">
+            <div><div class="pname">P1S-03</div><div class="pserial mono">01P00A3B1900162</div></div>
+            <span class="badge b-free"><span class="d"></span>Libre</span>
+          </div>
+          <div class="prog">
+            <div class="progtop"><span class="pct" style="color: #4F5058">—</span><span class="pmeta">Sin trabajo activo</span></div>
+            <div class="bar"></div>
+          </div>
+          <div class="job"><span class="jfile" style="color: #74757B">Lista para asignación automática</span></div>
+          <div class="temps">
+            <div class="temp"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 14.76V4.5a2.5 2.5 0 0 0-5 0v10.26a4.5 4.5 0 1 0 5 0z"/></svg><div><div class="tval">28°</div><div class="tlbl">Nozzle</div></div></div>
+            <div class="temp"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="14" width="18" height="6" rx="1"/><path d="M7 14V9M12 14V7M17 14V9"/></svg><div><div class="tval">24°</div><div class="tlbl">Cama</div></div></div>
+            <div class="temp"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18"/></svg><div><div class="tval">23°</div><div class="tlbl">Cámara</div></div></div>
+          </div>
+          <div class="metarow">
+            <span class="ams"><span class="swatch" style="background: #d8d8d8"></span>PLA Blanco</span>
+            <span class="gstate">IDLE</span>
+          </div>
+          <div class="rest">Última señal hace 3 s</div>
+          <div class="grow"></div>
+          <div class="ctrls">
+            <button class="btn btn-ghost" disabled style="opacity: 0.5; cursor: default">Sin controles disponibles</button>
+          </div>
+        </div>
+
+        <!-- P1S-04 printing near done -->
+        <div class="card">
+          <div class="chead">
+            <div><div class="pname">P1S-04</div><div class="pserial mono">01P00A3B1900184</div></div>
+            <span class="badge b-print"><span class="d"></span>Imprimiendo</span>
+          </div>
+          <div class="prog">
+            <div class="progtop"><span class="pct">94%</span><span class="pmeta">Capa 301 / 320</span></div>
+            <div class="bar"><div class="fill near" style="width: 94%"></div></div>
+          </div>
+          <div class="job"><span class="jfile mono">bracket_x2.gcode</span><span class="org">VantTec</span></div>
+          <div class="temps">
+            <div class="temp"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 14.76V4.5a2.5 2.5 0 0 0-5 0v10.26a4.5 4.5 0 1 0 5 0z"/></svg><div><div class="tval">210°<span> / 210°</span></div><div class="tlbl">Nozzle</div></div></div>
+            <div class="temp"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="14" width="18" height="6" rx="1"/><path d="M7 14V9M12 14V7M17 14V9"/></svg><div><div class="tval">55°<span> / 55°</span></div><div class="tlbl">Cama</div></div></div>
+            <div class="temp"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18"/></svg><div><div class="tval">30°</div><div class="tlbl">Cámara</div></div></div>
+          </div>
+          <div class="metarow">
+            <span class="ams"><span class="swatch" style="background: #d8d8d8"></span>PLA Blanco</span>
+            <span class="gstate">RUNNING</span>
+          </div>
+          <div class="rest">~6 min restantes · fin 14:30</div>
+          <div class="grow"></div>
+          <div class="ctrls">
+            <button class="btn"><svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14"/><rect x="14" y="5" width="4" height="14"/></svg>Pausar</button>
+            <button class="btn btn-danger"><svg viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="5" width="14" height="14" rx="2"/></svg>Detener</button>
+          </div>
+        </div>
+
+        <!-- P1S-05 idle, just finished -->
+        <div class="card">
+          <div class="chead">
+            <div><div class="pname">P1S-05</div><div class="pserial mono">01P00A3B1900205</div></div>
+            <span class="badge b-free"><span class="d"></span>Libre</span>
+          </div>
+          <div class="prog">
+            <div class="progtop"><span class="pct" style="color: #46B877">100%</span><span class="pmeta">Trabajo completado hace 3 min</span></div>
+            <div class="bar"><div class="fill near" style="width: 100%"></div></div>
+          </div>
+          <div class="job"><span class="jfile mono" style="color: #A0A1A6">tapa_sensor.gcode</span><span class="org">RoBorregos</span></div>
+          <div class="temps">
+            <div class="temp"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 14.76V4.5a2.5 2.5 0 0 0-5 0v10.26a4.5 4.5 0 1 0 5 0z"/></svg><div><div class="tval">74°</div><div class="tlbl">Nozzle</div></div></div>
+            <div class="temp"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="14" width="18" height="6" rx="1"/><path d="M7 14V9M12 14V7M17 14V9"/></svg><div><div class="tval">41°</div><div class="tlbl">Cama</div></div></div>
+            <div class="temp"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18"/></svg><div><div class="tval">27°</div><div class="tlbl">Cámara</div></div></div>
+          </div>
+          <div class="metarow">
+            <span class="ams"><span class="swatch" style="background: #14161c"></span>PLA Negro Galaxy</span>
+            <span class="gstate">FINISH</span>
+          </div>
+          <div class="rest">Enfriando · retirar pieza para el siguiente trabajo</div>
+          <div class="grow"></div>
+          <div class="ctrls">
+            <button class="btn btn-ghost" disabled style="opacity: 0.5; cursor: default">Sin controles disponibles</button>
+          </div>
+        </div>
+
+        <!-- P1S-06 offline -->
+        <div class="card off">
+          <div class="chead">
+            <div><div class="pname">P1S-06</div><div class="pserial mono">01P00A3B1900219</div></div>
+            <span class="badge b-off"><span class="d"></span>Offline</span>
+          </div>
+          <div class="prog">
+            <div class="progtop"><span class="pct" style="color: #4F5058">—</span><span class="pmeta">Sin telemetría</span></div>
+            <div class="bar"></div>
+          </div>
+          <div class="job"><span class="jfile" style="color: #74757B">Sin conexión MQTT</span></div>
+          <div class="temps">
+            <div class="temp"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 14.76V4.5a2.5 2.5 0 0 0-5 0v10.26a4.5 4.5 0 1 0 5 0z"/></svg><div><div class="tval" style="color: #4F5058">—</div><div class="tlbl">Nozzle</div></div></div>
+            <div class="temp"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="14" width="18" height="6" rx="1"/><path d="M7 14V9M12 14V7M17 14V9"/></svg><div><div class="tval" style="color: #4F5058">—</div><div class="tlbl">Cama</div></div></div>
+            <div class="temp"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18"/></svg><div><div class="tval" style="color: #4F5058">—</div><div class="tlbl">Cámara</div></div></div>
+          </div>
+          <div class="metarow">
+            <span class="ams" style="color: #74757B"><span class="swatch" style="background: #333846"></span>Desconocido</span>
+            <span class="gstate">—</span>
+          </div>
+          <div class="rest warn">Última señal hace 11 min · reintentando conexión…</div>
+          <div class="grow"></div>
+          <div class="ctrls">
+            <button class="btn btn-ghost"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 2v6h-6M3 22v-6h6"/><path d="M21 8a9 9 0 0 0-15-3L3 8M3 16a9 9 0 0 0 15 3l3-3"/></svg>Reintentar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

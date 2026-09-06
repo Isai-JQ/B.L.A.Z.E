@@ -1,0 +1,264 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <style>
+    body { margin: 0; font-family: Arial, Helvetica, sans-serif; background: #080A12; color: #ECECEE; -webkit-font-smoothing: antialiased; }
+    * { box-sizing: border-box; }
+    a { color: #6E9BF0; text-decoration: none; }
+    a:hover { color: #9DBEF7; }
+    h1 { margin: 0; font-size: 20px; font-weight: 700; color: #ffffff; letter-spacing: -0.01em; }
+    .mono { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+
+    .app { display: flex; min-height: 1000px; }
+    .side { width: 224px; flex-shrink: 0; background: #12151F; border-right: 1px solid #232734; display: flex; flex-direction: column; padding: 20px 14px; }
+    .brand { display: flex; align-items: center; gap: 9px; padding: 4px 6px 20px; }
+    .brand .glyph { width: 26px; height: 26px; border-radius: 7px; background: #0033A0; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 800; font-size: 13px; }
+    .brand .wm { font-weight: 800; font-size: 15px; letter-spacing: 0.14em; color: #fff; }
+    .navgroup { display: flex; flex-direction: column; gap: 3px; }
+    .nav { display: flex; align-items: center; gap: 11px; padding: 9px 12px; border-radius: 8px; color: #A0A1A6; font-size: 14px; font-weight: 600; }
+    .nav svg { width: 18px; height: 18px; flex-shrink: 0; }
+    .nav:hover { background: #1A1E2B; color: #CED0D5; }
+    .nav.active { background: #232734; color: #fff; box-shadow: inset 3px 0 0 #2E5AD6; }
+    .side .spacer { flex: 1; }
+    .userchip { display: flex; align-items: center; gap: 10px; padding: 10px; border-radius: 9px; background: #0C0F18; border: 1px solid #232734; }
+    .collab { margin-top: 16px; padding-top: 15px; border-top: 1px solid #232734; opacity: 0.5; transition: opacity 0.15s ease; }
+    .collab:hover { opacity: 0.82; }
+    .collab-cap { font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; color: #74757B; margin-bottom: 12px; }
+    .collab-logos { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; }
+    .collab-logos img { width: auto; display: block; }
+    .collab-logos .l-fred { height: 24px; }
+    .collab-logos .l-tec { height: 15px; }
+    .collab-logos .l-mit { height: 13px; }
+    .avatar { width: 30px; height: 30px; border-radius: 999px; background: #0033A0; color: #DDE6FB; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 12px; }
+    .userchip .who { min-width: 0; }
+    .userchip .em { font-size: 12px; color: #ECECEE; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .userchip .rl { font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; color: #6E9BF0; }
+
+    .main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+    .top { display: flex; align-items: flex-start; justify-content: space-between; padding: 18px 32px; border-bottom: 1px solid #232734; }
+    .sub { margin: 5px 0 0; font-size: 13px; color: #A0A1A6; max-width: 620px; }
+    .topright { display: flex; align-items: center; gap: 18px; padding-top: 2px; }
+    .live { display: flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 700; color: #46B877; }
+    .live .p { width: 8px; height: 8px; border-radius: 999px; background: #1F9D57; animation: pulse 2s infinite; }
+    @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(31,157,87,0.5); } 70% { box-shadow: 0 0 0 7px rgba(31,157,87,0); } 100% { box-shadow: 0 0 0 0 rgba(31,157,87,0); } }
+    .upd { font-size: 12px; color: #74757B; }
+
+    .admtag { font-size: 10px; font-weight: 800; letter-spacing: 0.06em; color: #6E9BF0; background: rgba(46,90,214,0.14); border: 1px solid rgba(46,90,214,0.35); padding: 3px 9px; border-radius: 999px; display: inline-flex; align-items: center; gap: 6px; vertical-align: 3px; margin-left: 10px; }
+    .admtag svg { width: 11px; height: 11px; }
+
+    .content { padding: 24px 32px 36px; }
+    .warn-cb { display: flex; gap: 11px; align-items: flex-start; background: rgba(217,164,65,0.08); border: 1px solid rgba(217,164,65,0.25); border-radius: 9px; padding: 13px 16px; margin-bottom: 22px; font-size: 12.5px; color: #D8CBA6; line-height: 1.55; }
+    .warn-cb svg { width: 17px; height: 17px; color: #D9A441; flex-shrink: 0; margin-top: 1px; }
+    .warn-cb b { color: #D9A441; }
+
+    .cols { display: grid; grid-template-columns: 1.35fr 1fr; gap: 20px; align-items: start; }
+    .panel { background: #12151F; border: 1px solid #232734; border-radius: 11px; overflow: hidden; }
+    .ph { padding: 14px 16px; border-bottom: 1px solid #232734; font-size: 12px; font-weight: 700; color: #C8CACF; display: flex; align-items: center; justify-content: space-between; }
+    .ph .hint { font-size: 11px; font-weight: 600; color: #74757B; }
+
+    .dlist { padding: 8px; display: flex; flex-direction: column; gap: 6px; }
+    .drow { display: flex; align-items: center; gap: 12px; padding: 11px 12px; border-radius: 9px; border: 1px solid #232734; background: #0C0F18; }
+    .drow .grip { color: #4F5058; cursor: grab; display: flex; }
+    .drow .grip svg { width: 16px; height: 16px; }
+    .drow .rk { width: 26px; height: 26px; border-radius: 7px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; flex-shrink: 0; }
+    .rk.manual { background: rgba(46,90,214,0.16); color: #6E9BF0; border: 1px solid rgba(46,90,214,0.4); }
+    .rk.auto { background: #232734; color: #74757B; }
+    .drow .df { flex: 1; min-width: 0; font-size: 13px; color: #ECECEE; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .drow .dorg { font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 6px; background: #232734; color: #A0A1A6; white-space: nowrap; }
+    .drow .dorg.fred { background: rgba(217,164,65,0.14); color: #D9A441; }
+    .drow .unpin { font-size: 11px; font-weight: 700; color: #6E9BF0; background: none; border: none; cursor: pointer; white-space: nowrap; padding: 0; }
+    .drow .autotag { font-size: 10px; color: #4F5058; font-weight: 700; letter-spacing: 0.04em; white-space: nowrap; }
+    .drow.dragging { border-color: #2E5AD6; box-shadow: 0 12px 26px rgba(0,0,0,0.5), 0 0 0 1px rgba(46,90,214,0.5); transform: rotate(-1deg); background: #161B2A; position: relative; z-index: 2; }
+    .drow.ghost { opacity: 0.32; border-style: dashed; }
+    .dropline { height: 2px; background: #2E5AD6; border-radius: 2px; margin: 1px 12px; box-shadow: 0 0 8px rgba(46,90,214,0.7); }
+
+    .result { display: flex; flex-direction: column; }
+    .rr { display: flex; align-items: center; gap: 10px; padding: 10px 14px; font-size: 12.5px; color: #C8CACF; border-bottom: 1px solid #1B1F2C; }
+    .rr:last-child { border-bottom: none; }
+    .rr .rn { width: 18px; font-weight: 800; color: #fff; }
+    .rr .rfile { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .rr .rt { font-size: 9px; font-weight: 800; letter-spacing: 0.05em; padding: 2px 6px; border-radius: 5px; margin-left: auto; flex-shrink: 0; }
+    .rt.m { background: rgba(46,90,214,0.16); color: #6E9BF0; }
+    .rt.a { background: #232734; color: #74757B; }
+
+    .howto { margin-top: 16px; background: #0C0F18; border: 1px solid #232734; border-radius: 10px; padding: 14px 16px; }
+    .howto h3 { margin: 0 0 9px; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: #A0A1A6; }
+    .howto ul { margin: 0; padding-left: 16px; color: #A0A1A6; font-size: 12px; line-height: 1.7; }
+    .howto code { font-family: ui-monospace, Menlo, monospace; font-size: 11px; background: #232734; color: #C8CACF; padding: 1px 5px; border-radius: 4px; }
+
+    .actionbar { display: flex; align-items: center; gap: 14px; margin-top: 22px; padding-top: 18px; border-top: 1px solid #232734; }
+    .unsaved { margin-right: auto; font-size: 12px; font-weight: 700; color: #D9A441; display: flex; align-items: center; gap: 7px; }
+    .unsaved .d { width: 7px; height: 7px; border-radius: 999px; background: #D9A441; }
+    .btn { font: inherit; font-size: 13px; font-weight: 700; padding: 9px 18px; border-radius: 8px; border: 1px solid #333846; background: transparent; color: #CED0D5; cursor: pointer; }
+    .btn:hover { background: #232734; }
+    .btn-primary { background: #0033A0; border-color: #0033A0; color: #fff; }
+    .btn-primary:hover { background: #00297F; }
+  </style>
+</helmet>
+
+<div class="app">
+  <aside class="side">
+    <div class="brand"><span class="glyph">B</span><span class="wm">B.L.A.Z.E</span></div>
+    <div class="navgroup">
+      <div class="nav">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+        Fleet
+      </div>
+      <div class="nav">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><line x1="9" y1="6" x2="20" y2="6"/><line x1="9" y1="12" x2="20" y2="12"/><line x1="9" y1="18" x2="20" y2="18"/><circle cx="4.5" cy="6" r="1.3" fill="currentColor" stroke="none"/><circle cx="4.5" cy="12" r="1.3" fill="currentColor" stroke="none"/><circle cx="4.5" cy="18" r="1.3" fill="currentColor" stroke="none"/></svg>
+        Cola de trabajos
+      </div>
+      <div class="nav active">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
+        Reordenar cola
+      </div>
+    </div>
+    <div class="spacer"></div>
+    <div class="userchip">
+      <div class="avatar">MR</div>
+      <div class="who">
+        <div class="em">m.rios@fredfactory.mx</div>
+        <div class="rl">FrED-Factory · Admin</div>
+      </div>
+    </div>
+    <div class="collab">
+      <div class="collab-cap">En colaboración con</div>
+      <div class="collab-logos">
+        <img class="l-fred" src="logo-fred.png" alt="FrED Factory">
+        <img class="l-tec" src="logo-tec.png" alt="Tecnológico de Monterrey">
+        <img class="l-mit" src="logo-mit.png" alt="MIT">
+      </div>
+    </div>
+  </aside>
+
+  <div class="main">
+    <div class="top">
+      <div>
+        <h1>Reordenar cola<span class="admtag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>Solo administradores</span></h1>
+        <p class="sub">Fija trabajos por encima de la prioridad automática. El orden manual aplica a toda la cola, sin importar la organización de cada trabajo.</p>
+      </div>
+      <div class="topright">
+        <span class="live"><span class="p"></span>EN VIVO</span>
+        <span class="upd">Cola bloqueada mientras editas</span>
+      </div>
+    </div>
+
+    <div class="content">
+      <div class="warn-cb">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4M12 17h.01"/></svg>
+        <span>Reordenar manualmente <b>anula la prioridad automática</b> para los trabajos que toques. Úsalo solo para casos excepcionales; los trabajos sin fijar siguen ordenándose por prioridad de organización + FIFO.</span>
+      </div>
+
+      <div class="cols">
+        <!-- Left: drag list -->
+        <div class="panel">
+          <div class="ph"><span>Cola pendiente · arrastra para reordenar</span><span class="hint">8 trabajos</span></div>
+          <div class="dlist">
+            <div class="drow">
+              <span class="grip"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="5" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="9" cy="19" r="1.6"/><circle cx="15" cy="5" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="15" cy="19" r="1.6"/></svg></span>
+              <span class="rk manual">1</span>
+              <span class="df mono">junta_motor.gcode</span>
+              <span class="dorg fred">FrED-Factory</span>
+              <button class="unpin">Quitar fijado</button>
+            </div>
+
+            <div class="drow dragging">
+              <span class="grip"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="5" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="9" cy="19" r="1.6"/><circle cx="15" cy="5" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="15" cy="19" r="1.6"/></svg></span>
+              <span class="rk manual">2</span>
+              <span class="df mono">mount_lidar.gcode</span>
+              <span class="dorg fred">FrED-Factory</span>
+              <button class="unpin">Quitar fijado</button>
+            </div>
+            <div class="dropline"></div>
+
+            <div class="drow">
+              <span class="grip"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="5" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="9" cy="19" r="1.6"/><circle cx="15" cy="5" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="15" cy="19" r="1.6"/></svg></span>
+              <span class="rk manual">3</span>
+              <span class="df mono">soporte_cam.gcode</span>
+              <span class="dorg">RoBorregos</span>
+              <button class="unpin">Quitar fijado</button>
+            </div>
+
+            <div class="drow">
+              <span class="grip"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="5" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="9" cy="19" r="1.6"/><circle cx="15" cy="5" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="15" cy="19" r="1.6"/></svg></span>
+              <span class="rk auto">·</span>
+              <span class="df mono">perfil_ala_v4.3mf</span>
+              <span class="dorg fred">FrED-Factory</span>
+              <span class="autotag">AUTO · Alta</span>
+            </div>
+            <div class="drow">
+              <span class="grip"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="5" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="9" cy="19" r="1.6"/><circle cx="15" cy="5" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="15" cy="19" r="1.6"/></svg></span>
+              <span class="rk auto">·</span>
+              <span class="df mono">base_v2.gcode</span>
+              <span class="dorg">VantTec</span>
+              <span class="autotag">AUTO</span>
+            </div>
+            <div class="drow">
+              <span class="grip"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="5" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="9" cy="19" r="1.6"/><circle cx="15" cy="5" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="15" cy="19" r="1.6"/></svg></span>
+              <span class="rk auto">·</span>
+              <span class="df mono">clip_bateria.3mf</span>
+              <span class="dorg">RoBorregos</span>
+              <span class="autotag">AUTO</span>
+            </div>
+            <div class="drow">
+              <span class="grip"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="5" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="9" cy="19" r="1.6"/><circle cx="15" cy="5" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="15" cy="19" r="1.6"/></svg></span>
+              <span class="rk auto">·</span>
+              <span class="df mono">engrane_20t.gcode</span>
+              <span class="dorg">Astro Club</span>
+              <span class="autotag">EN ESPERA</span>
+            </div>
+            <div class="drow">
+              <span class="grip"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="5" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="9" cy="19" r="1.6"/><circle cx="15" cy="5" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="15" cy="19" r="1.6"/></svg></span>
+              <span class="rk auto">·</span>
+              <span class="df mono">carcasa_final.3mf</span>
+              <span class="dorg">VantTec</span>
+              <span class="autotag">AUTO</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: resulting order + explainer -->
+        <div>
+          <div class="panel">
+            <div class="ph"><span>Orden efectivo resultante</span><span class="hint">vista previa</span></div>
+            <div class="result">
+              <div class="rr"><span class="rn">1</span><span class="rfile mono">junta_motor.gcode</span><span class="rt m">MANUAL</span></div>
+              <div class="rr"><span class="rn">2</span><span class="rfile mono">mount_lidar.gcode</span><span class="rt m">MANUAL</span></div>
+              <div class="rr"><span class="rn">3</span><span class="rfile mono">soporte_cam.gcode</span><span class="rt m">MANUAL</span></div>
+              <div class="rr"><span class="rn">4</span><span class="rfile mono">perfil_ala_v4.3mf</span><span class="rt a">AUTO</span></div>
+              <div class="rr"><span class="rn">5</span><span class="rfile mono">base_v2.gcode</span><span class="rt a">AUTO</span></div>
+              <div class="rr"><span class="rn">6</span><span class="rfile mono">clip_bateria.3mf</span><span class="rt a">AUTO</span></div>
+              <div class="rr"><span class="rn">7</span><span class="rfile mono">engrane_20t.gcode</span><span class="rt a">AUTO</span></div>
+              <div class="rr"><span class="rn">8</span><span class="rfile mono">carcasa_final.3mf</span><span class="rt a">AUTO</span></div>
+            </div>
+          </div>
+
+          <div class="howto">
+            <h3>Cómo se aplica</h3>
+            <ul>
+              <li>Los trabajos <b>MANUAL</b> se guardan con <code>manual_rank</code> y van por encima del orden automático, sin importar la organización.</li>
+              <li>El resto sigue el orden automático: prioridad de organización &rarr; FIFO.</li>
+              <li><b>Quitar fijado</b> borra el <code>manual_rank</code> y devuelve el trabajo al orden automático.</li>
+              <li>Si el sistema asigna una impresora justo al guardar, el cambio se aplica de forma atómica: se guarda completo antes de la asignación o se toma en la siguiente impresora libre — nunca a medias.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="actionbar">
+        <span class="unsaved"><span class="d"></span>3 cambios sin guardar</span>
+        <button class="btn">Descartar</button>
+        <button class="btn btn-primary">Guardar orden</button>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>
