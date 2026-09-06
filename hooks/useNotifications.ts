@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
 export type Notification = {
@@ -50,5 +50,19 @@ export function useNotifications(pollMs = POLL_MS) {
     };
   }, [pollMs]);
 
-  return { notifications, error };
+  // T34: mark one notification read via PATCH /api/notifications/:id/read (T28) and drop
+  // it from the list optimistically — the list is unread-only, so the badge count falls
+  // right away; the next poll reconciles.
+  const markRead = useCallback(async (id: string) => {
+    setNotifications((prev) => prev.filter((n) => n.id !== id));
+    const { data } = await supabase.auth.getSession();
+    const token = data.session?.access_token;
+    if (!token) return;
+    await fetch(`/api/notifications/${id}/read`, {
+      method: "PATCH",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  }, []);
+
+  return { notifications, error, markRead };
 }

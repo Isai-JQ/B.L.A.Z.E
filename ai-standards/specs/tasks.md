@@ -172,7 +172,7 @@ Derivado de `plan.md` (Plan Técnico 001). Cada tarea es de menos de 30 min e in
   RF: RF-13
   Hecho cuando: un admin puede mover un job hacia arriba/abajo en la UI y el cambio persiste al recargar.
 
-- [ ] **T34.** Componente de notificaciones (badge + lista desplegable) conectado a T29.
+- [x] **T34.** Componente de notificaciones (badge + lista desplegable) conectado a T29.
   RF: RF-7, RF-10
   Hecho cuando: una notificación nueva incrementa el badge y se puede marcar como leída desde la UI.
 

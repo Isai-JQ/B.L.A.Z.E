@@ -1,3 +1,5 @@
+import NotificationsBell from "@/components/NotificationsBell";
+
 // T30: adapted from the reference repo's Topbar. The "EN VIVO" pill plus the
 // "actualizado hace N s" label are the visible proof that the fleet grid is
 // polling itself (useFleet, T29 pattern) — no reload.
@@ -37,6 +39,7 @@ export default function Topbar({
           </span>
         )}
         <span className="text-gray-500">{agoLabel(updatedAt)}</span>
+        <NotificationsBell />
       </div>
     </header>
   );
