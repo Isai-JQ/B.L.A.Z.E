@@ -206,6 +206,6 @@ Derivado de `plan.md` (Plan Técnico 001). Cada tarea es de menos de 30 min e in
   RF: RF-1, RF-8
   Hecho cuando: el flujo se completa sin errores contra al menos una impresora real o simulada.
 
-- [ ] **T42.** Test E2E (manual o Playwright) del reordenamiento de admin reflejado en la vista de cola (T33).
+- [x] **T42.** Test E2E (manual o Playwright) del reordenamiento de admin reflejado en la vista de cola (T33).
   RF: RF-13
   Hecho cuando: el nuevo orden fijado por el admin se ve igual en la UI y en la base de datos.
