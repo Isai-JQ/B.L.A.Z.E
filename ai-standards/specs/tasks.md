@@ -48,7 +48,7 @@ Derivado de `plan.md` (Plan Técnico 001). Cada tarea es de menos de 30 min e in
   RF: RF-9
   Hecho cuando: un usuario nuevo puede registrarse e iniciar sesión.
 
-- [ ] **T10b.** Restringir el registro a correos `@tec.mx`: validación en el cliente (`AuthScreen.tsx`, feedback inmediato) y en el trigger `handle_new_user()` de T11b (`RAISE EXCEPTION` si el dominio no es `@tec.mx`, para que no se pueda evadir llamando directo a la API de Supabase).
+- [x] **T10b.** Restringir el registro a correos `@tec.mx`: validación en el cliente (`AuthScreen.tsx`, feedback inmediato) y en el trigger `handle_new_user()` de T11b (`RAISE EXCEPTION` si el dominio no es `@tec.mx`, para que no se pueda evadir llamando directo a la API de Supabase).
   RF: RF-14
   Hecho cuando: registrarse con un correo que no sea `@tec.mx` es rechazado tanto en la UI como llamando directo a `supabase.auth.signUp()`.
 
@@ -156,7 +156,7 @@ Derivado de `plan.md` (Plan Técnico 001). Cada tarea es de menos de 30 min e in
 
 ## Fase 8 — Dashboard UI
 
-- [ ] **T30.** Adaptar `Topbar`, `Sidebar`, `MetricsRow` y `PrinterDetail` del repo anterior para mostrar el estado en tiempo real del fleet.
+- [x] **T30.** Adaptar `Topbar`, `Sidebar`, `MetricsRow` y `PrinterDetail` del repo anterior para mostrar el estado en tiempo real del fleet.
   RF: RF-1
   Hecho cuando: la interfaz muestra temperatura, progreso y estado de al menos una impresora simulada, actualizándose sola.
 
