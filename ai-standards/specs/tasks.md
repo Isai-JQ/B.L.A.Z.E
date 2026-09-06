@@ -202,7 +202,7 @@ Derivado de `plan.md` (Plan Técnico 001). Cada tarea es de menos de 30 min e in
   RF: RF-9
   Hecho cuando: el test crea una organización nueva vía registro y verifica su `priority_tier` por defecto.
 
-- [ ] **T41.** Test E2E (manual o Playwright) del flujo completo: login, subir job, ver estado en tiempo real, pausar/reanudar/detener.
+- [x] **T41.** Test E2E (manual o Playwright) del flujo completo: login, subir job, ver estado en tiempo real, pausar/reanudar/detener.
   RF: RF-1, RF-8
   Hecho cuando: el flujo se completa sin errores contra al menos una impresora real o simulada.
 
