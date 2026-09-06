@@ -267,6 +267,7 @@ const t22 = {
 // Registered after the T14b afterAll, so with vitest's default "stack" hook order
 // this cleanup runs first — before that hook calls sql.end().
 afterAll(async () => {
+  await sql`delete from notifications where user_id = ${t22.userId}`;
   await sql`delete from jobs where user_id = ${t22.userId}`;
   await sql`delete from user_profiles where id = ${t22.userId}`;
   await sql`delete from auth.users where id = ${t22.userId}`;
@@ -380,4 +381,42 @@ it("falls back to the next free printer when the send fails (T23)", async () => 
   expect(await waitForJobStatus(t22.jobT23, "printing")).toMatchObject({ printer_id: printerA });
   expect(sent.map((s) => s.ip)).toEqual(["10.0.0.202", "10.0.0.201"]);
   expect(Date.parse((await sql`select started_at from jobs where id = ${t22.jobT23}`)[0].started_at)).not.toBeNaN();
+});
+
+// ---------------------------------------------------------------------------
+// T24: the printer running a job stops reporting. The T17 sweep flips it to
+// 'offline' and, in the same statement, fails the job it was printing and
+// notifies its owner. The other printer and its queued job are untouched.
+// ---------------------------------------------------------------------------
+
+it("fails the printing job and notifies its owner when its printer goes offline (T24)", async () => {
+  // Leaves T23 with jobT23 printing on A. Give B a queued job it has not taken.
+  const [lowOrg] = await sql`select id from organizations where name = ${t22.orgName}`;
+  const queued = randomUUID();
+  await sql`
+    insert into jobs (id, user_id, organization_id, file_name, file_path, status)
+    values (${queued}, ${t22.userId}, ${lowOrg.id}, 't24.gcode', 'pending://t24', 'queued')
+  `;
+  await sql`update printers set status = 'printing', last_seen_at = now() - interval '90 seconds'
+            where serial_number = ${fleet[0].serial}`;
+  await sql`update printers set status = 'printing', last_seen_at = now() where serial_number = ${fleet[1].serial}`;
+
+  await sweepOffline(db, 30);
+
+  expect((await rowFor(fleet[0].serial)).status).toBe("offline");
+  expect(await jobRow(t22.jobT23)).toMatchObject({ status: "failed" });
+  const [job] = await sql`select failure_reason, finished_at from jobs where id = ${t22.jobT23}`;
+  expect(job.failure_reason).toMatch(/disconnected/);
+  expect(job.finished_at).not.toBeNull();
+  const notes = await sql`select user_id, type, message from notifications where job_id = ${t22.jobT23}`;
+  expect(notes).toHaveLength(1);
+  expect(notes[0]).toMatchObject({ user_id: t22.userId, type: "job_failed", message: job.failure_reason });
+
+  // Untouched: the live printer and the job that was only queued.
+  expect((await rowFor(fleet[1].serial)).status).toBe("printing");
+  expect(await jobRow(queued)).toMatchObject({ status: "queued", printer_id: null });
+
+  // A second sweep does not fail it twice or notify again.
+  await sweepOffline(db, 30);
+  expect(await sql`select 1 from notifications where job_id = ${t22.jobT23}`).toHaveLength(1);
 });

@@ -303,13 +303,30 @@ function watchPrinter(ip, accessCode, serial, connect = mqtt.connect, db = null)
 // Flips any printer whose last report is older than `thresholdSeconds` to 'offline'.
 // The next report brings it back to 'idle'/'printing' via persistReport (T15). Runs on
 // an interval so a printer that just stops talking is caught without a report. (T17)
+// A job that was 'printing' on a printer that just went offline is lost: it becomes
+// 'failed' with the disconnection as failure_reason, and its owner gets a 'job_failed'
+// notification (T24). One statement, so the three writes land or roll back together.
 async function sweepOffline(db, thresholdSeconds = OFFLINE_AFTER_SECONDS) {
-  await db.execute(
-    sql`update printers set status = 'offline'
-        where status <> 'offline'
-          and (last_seen_at is null
-               or last_seen_at < now() - make_interval(secs => ${thresholdSeconds}))`,
+  const failed = await db.execute(
+    sql`with gone as (
+          update printers set status = 'offline'
+          where status <> 'offline'
+            and (last_seen_at is null
+                 or last_seen_at < now() - make_interval(secs => ${thresholdSeconds}))
+          returning id, name
+        ), failed as (
+          update jobs j
+          set status = 'failed', finished_at = now(),
+              failure_reason = 'Printer ' || g.name || ' disconnected while printing'
+          from gone g
+          where j.printer_id = g.id and j.status = 'printing'
+          returning j.id, j.user_id, j.failure_reason
+        )
+        insert into notifications (user_id, job_id, type, message)
+        select user_id, id, 'job_failed', failure_reason from failed
+        returning job_id`,
   );
+  for (const row of failed) console.log(`→ Job ${row.job_id} failed: printer went offline`);
 }
 
 // Reads the `printers` table and opens an MQTT client for every row not already watched.
