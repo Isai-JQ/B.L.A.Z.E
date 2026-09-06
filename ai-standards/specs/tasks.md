@@ -146,7 +146,7 @@ Derivado de `plan.md` (Plan Técnico 001). Cada tarea es de menos de 30 min e in
   RF: RF-7, RF-10
   Hecho cuando: un usuario puede obtener sus notificaciones no leídas vía API.
 
-- [ ] **T29.** Suscripción en el cliente (Supabase Realtime o polling corto) para mostrar notificaciones nuevas sin recargar la página.
+- [x] **T29.** Suscripción en el cliente (Supabase Realtime o polling corto) para mostrar notificaciones nuevas sin recargar la página.
   RF: RF-7, RF-10
   Hecho cuando: al crear una notificación en la base de datos, aparece en la interfaz sin recargar.
 
