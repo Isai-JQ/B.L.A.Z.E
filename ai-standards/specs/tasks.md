@@ -176,7 +176,7 @@ Derivado de `plan.md` (Plan Técnico 001). Cada tarea es de menos de 30 min e in
   RF: RF-7, RF-10
   Hecho cuando: una notificación nueva incrementa el badge y se puede marcar como leída desde la UI.
 
-- [ ] **T35.** Botones de pausar/reanudar/detener en `PrinterDetail`, conectados a los endpoints de T27.
+- [x] **T35.** Botones de pausar/reanudar/detener en `PrinterDetail`, conectados a los endpoints de T27.
   RF: RF-1, RF-8
   Hecho cuando: presionar cada botón contra una impresora simulada dispara el comando correcto y la UI refleja el nuevo estado.
 
