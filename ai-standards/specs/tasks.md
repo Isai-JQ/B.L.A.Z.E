@@ -86,57 +86,57 @@ Derivado de `plan.md` (Plan Técnico 001). Cada tarea es de menos de 30 min e in
   RF: RF-1
   Hecho cuando: un POST válido crea la fila en `printers` y uno inválido devuelve error.
 
-- [x] **T16b.** Habilitar RLS en `printers` sin ninguna policy para `anon`/`authenticated` (deny-all desde el cliente). Solo el servidor, con `DATABASE_URL` (dueño de la tabla, no sujeto a RLS), puede leer o escribir. Cualquier vista futura que necesite mostrar impresoras en el navegador debe pasar por una ruta de servidor que no incluya `access_code`.
+- [ ] **T16b.** Habilitar RLS en `printers` sin ninguna policy para `anon`/`authenticated` (deny-all desde el cliente). Solo el servidor, con `DATABASE_URL` (dueño de la tabla, no sujeto a RLS), puede leer o escribir. Cualquier vista futura que necesite mostrar impresoras en el navegador debe pasar por una ruta de servidor que no incluya `access_code`.
   RF: RF-1
   Hecho cuando: una llamada directa a la API de Supabase (no vía `/api/printers` ni el servidor) para leer o escribir `printers` es rechazada, para cualquier rol.
 
-- [x] **T17.** Chequeo periódico: marcar una impresora como `offline` si no llega un reporte dentro de un umbral de tiempo.
+- [ ] **T17.** Chequeo periódico: marcar una impresora como `offline` si no llega un reporte dentro de un umbral de tiempo.
   RF: RF-6
   Hecho cuando: al dejar de simular reportes de una impresora, su `status` cambia a `offline` tras el umbral.
 
 ## Fase 4 — Jobs
 
-- [x] **T18.** Endpoint de subida de archivo con validación de extensión (`.gcode`/`.3mf`) y tamaño máximo.
+- [ ] **T18.** Endpoint de subida de archivo con validación de extensión (`.gcode`/`.3mf`) y tamaño máximo.
   RF: RF-3
   Hecho cuando: un archivo válido se acepta y uno con extensión o tamaño incorrecto se rechaza con mensaje claro.
 
-- [x] **T19.** Al subir un archivo válido, crear la fila en `jobs` con `status = 'queued'` y la `organization_id` del usuario.
+- [ ] **T19.** Al subir un archivo válido, crear la fila en `jobs` con `status = 'queued'` y la `organization_id` del usuario.
   RF: RF-2
   Hecho cuando: tras subir un archivo, aparece una fila nueva en `jobs` con los datos correctos.
 
-- [x] **T20.** Guardar el archivo subido en almacenamiento (carpeta local o Supabase Storage) y enlazarlo en `jobs.file_path`.
+- [ ] **T20.** Guardar el archivo subido en almacenamiento (carpeta local o Supabase Storage) y enlazarlo en `jobs.file_path`.
   RF: RF-2, RF-11
   Hecho cuando: el archivo subido es recuperable a partir de `file_path`.
 
 ## Fase 5 — Queue Engine
 
-- [x] **T21.** Función pura que, dado un conjunto de jobs, calcula el orden de la cola (tier de organización → FIFO por `created_at` → `manual_rank` si existe).
+- [ ] **T21.** Función pura que, dado un conjunto de jobs, calcula el orden de la cola (tier de organización → FIFO por `created_at` → `manual_rank` si existe).
   RF: RF-4, RF-13
   Hecho cuando: dado un set de jobs de prueba con tiers y timestamps distintos, la función devuelve el orden esperado.
 
-- [x] **T22.** Al liberarse una impresora (status pasa a `idle`), tomar el primer job de la cola calculada y asignarlo (`printer_id`, `status = 'assigned'`).
+- [ ] **T22.** Al liberarse una impresora (status pasa a `idle`), tomar el primer job de la cola calculada y asignarlo (`printer_id`, `status = 'assigned'`).
   RF: RF-5
   Hecho cuando: al simular que una impresora queda libre con jobs en cola, el primero se asigna automáticamente.
 
-- [x] **T23.** Si la impresora asignada está `offline` al momento de enviar el trabajo, reintentar con la siguiente impresora libre del fleet.
+- [ ] **T23.** Al asignar un job (T22), enviarlo de verdad a la impresora: subir el archivo por FTP e iniciar la impresión con el comando MQTT correspondiente (portar la lógica de `bambulabs_api` del repo de referencia a Node dentro del gateway). Si ese envío falla (no solo si `printers.status` ya decía offline), reintentar automáticamente con la siguiente impresora libre del fleet.
   RF: RF-6
-  Hecho cuando: simulando una impresora offline al momento de asignar, el job termina asignado a otra impresora libre.
+  Hecho cuando: simulando que el envío real (FTP/MQTT) falla para la impresora asignada, aunque su `status` en base de datos diga `idle`, el job termina asignado y enviado con éxito a otra impresora libre.
 
-- [x] **T24.** Si una impresora se desconecta mientras un job tiene `status = 'printing'`, marcar el job como `failed` y crear una notificación.
+- [ ] **T24.** Si una impresora se desconecta mientras un job tiene `status = 'printing'`, marcar el job como `failed` y crear una notificación.
   RF: RF-7
   Hecho cuando: al simular la desconexión de una impresora con un job en curso, el job pasa a `failed` y aparece una fila en `notifications`.
 
-- [x] **T25.** Si no hay ninguna impresora libre al encolar un job, dejarlo en `status = 'waiting'` y crear una notificación de "en lista de espera".
+- [ ] **T25.** Si no hay ninguna impresora libre al encolar un job, dejarlo en `status = 'waiting'` y crear una notificación de "en lista de espera".
   RF: RF-10
   Hecho cuando: con todas las impresoras ocupadas/offline, un job nuevo queda en `waiting` y genera una notificación.
 
-- [x] **T26.** Endpoint para que un admin fije `manual_rank` en uno o más jobs, y que el cálculo de la cola lo respete.
+- [ ] **T26.** Endpoint para que un admin fije `manual_rank` en uno o más jobs, y que el cálculo de la cola lo respete.
   RF: RF-13
   Hecho cuando: un usuario con `role = 'admin'` puede cambiar el orden de dos jobs y la cola calculada refleja el cambio; un usuario `member` recibe error al intentarlo.
 
 ## Fase 6 — Control de impresión
 
-- [ ] **T27.** Endpoints/comandos para pausar, reanudar y detener un job en curso, enviados vía MQTT a la impresora asignada.
+- [ ] **T27.** Endpoints/comandos para pausar, reanudar y detener un job en curso, enviados vía MQTT a la impresora asignada. Solo el dueño del job (`user_id`) o un usuario con `role = 'admin'` puede ejecutarlos; cualquier otro recibe 403.
   RF: RF-8
   Hecho cuando: cada comando, al ejecutarse contra una impresora simulada, dispara el mensaje MQTT correspondiente en `device/{serial}/request`.
 

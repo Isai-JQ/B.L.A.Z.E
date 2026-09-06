@@ -24,7 +24,7 @@ Mientras se espera el CAD y la llegada de la Raspberry Pi y demás hardware, el 
 - RF-5: CUANDO una impresora del fleet quede libre, EL SISTEMA asignará automáticamente el trabajo de mayor prioridad en la cola a esa impresora.
 - RF-6: SI la impresora asignada a un trabajo está offline o no responde al momento del envío, ENTONCES EL SISTEMA probará automáticamente con la siguiente impresora libre del fleet.
 - RF-7: SI la impresora asignada a un trabajo se desconecta mientras la impresión ya está en curso, ENTONCES EL SISTEMA marcará el trabajo como fallido y emitirá una notificación al usuario que lo envió.
-- RF-8: CUANDO un usuario con permisos solicite pausar, reanudar o detener un trabajo en curso, EL SISTEMA enviará el comando correspondiente vía MQTT a la impresora asignada.
+- RF-8: CUANDO el dueño de un trabajo en curso, o un administrador, solicite pausarlo, reanudarlo o detenerlo, EL SISTEMA enviará el comando correspondiente vía MQTT a la impresora asignada. Cualquier otro usuario recibe un error de permisos.
 - RF-9: EL SISTEMA restringirá el acceso a usuarios autenticados cuyo correo pertenezca a una organización registrada; el conjunto de organizaciones es abierto, se pueden agregar nuevas sin cambios de código.
 - RF-10: MIENTRAS un trabajo espere porque ninguna impresora del fleet está libre, EL SISTEMA lo marcará como "en lista de espera" y notificará ese estado al usuario que lo envió.
 - RF-11: EL SISTEMA persistirá cada trabajo (archivo, organización, prioridad, impresora asignada, estado, timestamps) para consulta posterior.
