@@ -47,7 +47,7 @@ const lastPayload = () => JSON.parse(sent[sent.length - 1].payload);
 beforeAll(async () => {
   await db.execute(sql`
     insert into auth.users (id, aud, role, email, raw_user_meta_data)
-    values (${owner}, 'authenticated', 'authenticated', ${`${owner}@blaze.test`},
+    values (${owner}, 'authenticated', 'authenticated', ${`${owner}@tec.mx`},
             jsonb_build_object('organization_name', ${orgName}::text))
   `);
   const [org] = await db.execute(sql`select id from organizations where name = ${orgName}`);

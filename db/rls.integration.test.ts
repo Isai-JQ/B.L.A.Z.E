@@ -56,7 +56,7 @@ describe("T11b RLS policies (live Supabase)", () => {
   });
 
   it("handle_new_user trigger provisions the organization and profile", async () => {
-    const email = `rls-test-${suffix}-a@blaze.test`;
+    const email = `rls-test-${suffix}-a@tec.mx`;
     const userAId = await createAuthUser(email, orgName);
     userIds.push(userAId);
 
@@ -69,7 +69,7 @@ describe("T11b RLS policies (live Supabase)", () => {
 
   it("blocks a user from reading another user's profile", async () => {
     const userAId = userIds[0]!;
-    const userBId = await createAuthUser(`rls-test-${suffix}-b@blaze.test`, orgName);
+    const userBId = await createAuthUser(`rls-test-${suffix}-b@tec.mx`, orgName);
     userIds.push(userBId);
 
     const otherRows = await asUser(userAId, (tx) => tx`select * from user_profiles where id = ${userBId}`);
@@ -87,5 +87,15 @@ describe("T11b RLS policies (live Supabase)", () => {
 
     const [profile] = await db.select().from(userProfiles).where(eq(userProfiles.id, userAId));
     expect(profile!.role).toBe("member");
+  });
+
+  // RF-14 / T10b: the domain check lives in handle_new_user() too, not just in
+  // AuthScreen, so it can't be skipped by calling supabase.auth.signUp() directly.
+  it("handle_new_user rejects a non-@tec.mx email at the DB layer", async () => {
+    const email = `rls-test-${suffix}-outsider@gmail.com`;
+    await expect(createAuthUser(email, orgName)).rejects.toThrow(/@tec\.mx/);
+
+    const rows = await sql`select id from auth.users where email = ${email}`;
+    expect(rows).toHaveLength(0);
   });
 });

@@ -30,7 +30,7 @@ beforeAll(async () => {
   ] as const) {
     await db.execute(sql`
       insert into auth.users (id, aud, role, email, raw_user_meta_data)
-      values (${id}, 'authenticated', 'authenticated', ${`${id}@blaze.test`},
+      values (${id}, 'authenticated', 'authenticated', ${`${id}@tec.mx`},
               jsonb_build_object('organization_name', ${org}::text))
     `);
   }
