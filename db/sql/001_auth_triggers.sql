@@ -40,6 +40,12 @@ declare
   org_name text := new.raw_user_meta_data ->> 'organization_name';
   org_id uuid;
 begin
+  -- Domain restriction, enforced here too so it can't be bypassed by calling
+  -- supabase.auth.signUp() directly (skipping the AuthScreen client check).
+  if new.email !~* '@tec\.mx$' then
+    raise exception 'registration is restricted to @tec.mx emails';
+  end if;
+
   select id into org_id from public.organizations where name = org_name;
 
   if org_id is null then
