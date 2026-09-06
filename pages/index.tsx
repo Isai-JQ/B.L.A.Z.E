@@ -22,7 +22,7 @@ export default function Home() {
 
   return (
     <div className="flex min-h-screen bg-gray-950 text-gray-100">
-      <Sidebar email={email} />
+      <Sidebar email={email} active="/" />
       <div className="flex min-w-0 flex-1 flex-col">
         <Topbar
           title="Fleet en tiempo real"

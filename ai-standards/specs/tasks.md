@@ -164,7 +164,7 @@ Derivado de `plan.md` (Plan Técnico 001). Cada tarea es de menos de 30 min e in
   RF: RF-3
   Hecho cuando: subir un archivo inválido muestra el mensaje de error en la UI, sin recargar la página.
 
-- [ ] **T32.** Nueva vista "Cola" que lista los jobs actuales con su posición, organización y estado.
+- [x] **T32.** Nueva vista "Cola" que lista los jobs actuales con su posición, organización y estado.
   RF: RF-12
   Hecho cuando: cualquier usuario autenticado puede ver la lista completa de jobs en cola, en el orden correcto.
 
