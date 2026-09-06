@@ -34,6 +34,10 @@ export default function AuthScreen() {
     setMessage("");
 
     if (!isLogin) {
+      if (!/@tec\.mx$/i.test(email.trim())) {
+        setMessage("Error: el registro está restringido a correos @tec.mx.");
+        return;
+      }
       if (!selectedOrg) {
         setMessage("Error: elige una organización.");
         return;

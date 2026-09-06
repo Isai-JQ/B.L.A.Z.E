@@ -110,6 +110,26 @@ describe("AuthScreen", () => {
     await screen.findByText(/Check your email to confirm/);
   });
 
+  it("rejects registration with a non-@tec.mx email before calling signUp", async () => {
+    from.mockReturnValueOnce(chain({ data: ORGS, error: null }));
+
+    render(<AuthScreen />);
+    fireEvent.click(screen.getByText("Don't have an account? Register here."));
+    await waitFor(() => expect(screen.getByText("RoBorregos")).toBeInTheDocument());
+
+    fireEvent.change(screen.getByPlaceholderText("alumno@tec.mx"), {
+      target: { value: "outsider@gmail.com" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("••••••••"), {
+      target: { value: "password1" },
+    });
+    fireEvent.change(screen.getByRole("combobox"), { target: { value: "org-rob" } });
+    fireEvent.click(screen.getByRole("button", { name: "Register" }));
+
+    await screen.findByText(/restringido a correos @tec\.mx/);
+    expect(signUp).not.toHaveBeenCalled();
+  });
+
   it("shows the error message when auth fails", async () => {
     signInWithPassword.mockResolvedValue({ error: { message: "Invalid credentials" } });
 
