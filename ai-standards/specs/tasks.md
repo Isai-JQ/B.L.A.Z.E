@@ -48,6 +48,10 @@ Derivado de `plan.md` (Plan Técnico 001). Cada tarea es de menos de 30 min e in
   RF: RF-9
   Hecho cuando: un usuario nuevo puede registrarse e iniciar sesión.
 
+- [ ] **T10b.** Restringir el registro a correos `@tec.mx`: validación en el cliente (`AuthScreen.tsx`, feedback inmediato) y en el trigger `handle_new_user()` de T11b (`RAISE EXCEPTION` si el dominio no es `@tec.mx`, para que no se pueda evadir llamando directo a la API de Supabase).
+  RF: RF-14
+  Hecho cuando: registrarse con un correo que no sea `@tec.mx` es rechazado tanto en la UI como llamando directo a `supabase.auth.signUp()`.
+
 - [ ] **T11.** Agregar selector de organización en el registro, con opción de escribir una organización nueva (lista abierta).
   RF: RF-9
   Hecho cuando: registrar un usuario con una organización no existente la crea automáticamente con `priority_tier` por defecto (2).
@@ -136,17 +140,17 @@ Derivado de `plan.md` (Plan Técnico 001). Cada tarea es de menos de 30 min e in
 
 ## Fase 6 — Control de impresión
 
-- [x] **T27.** Endpoints/comandos para pausar, reanudar y detener un job en curso, enviados vía MQTT a la impresora asignada. Solo el dueño del job (`user_id`) o un usuario con `role = 'admin'` puede ejecutarlos; cualquier otro recibe 403.
+- [ ] **T27.** Endpoints/comandos para pausar, reanudar y detener un job en curso, enviados vía MQTT a la impresora asignada. Solo el dueño del job (`user_id`) o un usuario con `role = 'admin'` puede ejecutarlos; cualquier otro recibe 403.
   RF: RF-8
   Hecho cuando: cada comando, al ejecutarse contra una impresora simulada, dispara el mensaje MQTT correspondiente en `device/{serial}/request`.
 
 ## Fase 7 — Notificaciones
 
-- [x] **T28.** Endpoint/lectura de notificaciones por usuario (listar, marcar como leídas).
+- [ ] **T28.** Endpoint/lectura de notificaciones por usuario (listar, marcar como leídas).
   RF: RF-7, RF-10
   Hecho cuando: un usuario puede obtener sus notificaciones no leídas vía API.
 
-- [x] **T29.** Suscripción en el cliente (Supabase Realtime o polling corto) para mostrar notificaciones nuevas sin recargar la página.
+- [ ] **T29.** Suscripción en el cliente (Supabase Realtime o polling corto) para mostrar notificaciones nuevas sin recargar la página.
   RF: RF-7, RF-10
   Hecho cuando: al crear una notificación en la base de datos, aparece en la interfaz sin recargar.
 
