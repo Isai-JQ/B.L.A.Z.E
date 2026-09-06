@@ -160,7 +160,7 @@ Derivado de `plan.md` (Plan Técnico 001). Cada tarea es de menos de 30 min e in
   RF: RF-1
   Hecho cuando: la interfaz muestra temperatura, progreso y estado de al menos una impresora simulada, actualizándose sola.
 
-- [ ] **T31.** Adaptar `AddJobModal` para subir un archivo con feedback visual de validación (aceptado/rechazado).
+- [x] **T31.** Adaptar `AddJobModal` para subir un archivo con feedback visual de validación (aceptado/rechazado).
   RF: RF-3
   Hecho cuando: subir un archivo inválido muestra el mensaje de error en la UI, sin recargar la página.
 
