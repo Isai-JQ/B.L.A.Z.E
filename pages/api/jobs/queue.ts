@@ -8,14 +8,16 @@ import { calculateQueueOrder } from "@/lib/queueOrder";
 // T32: GET /api/jobs/queue — every active job in the order calculateQueueOrder (T21)
 // computes (org tier -> FIFO by created_at -> manual_rank). Any authenticated user
 // sees the whole queue, not just their own jobs (RF-12).
-// The response carries only what RF-12 asks for — position, organization, status,
-// file name. file_path and every other jobs column stay server-side.
+// The response carries position, organization, status, file name and the job id
+// (T33 needs the id to PATCH /api/jobs/reorder). file_path and every other jobs
+// column stay server-side.
 // Exported so tests can call it without minting a JWT; the default export is the
 // thin HTTP layer.
 
 const QUEUE_STATUSES = ["queued", "waiting", "assigned", "printing"] as const;
 
 export type QueueEntry = {
+  id: string;
   position: number;
   organization: string;
   status: (typeof QUEUE_STATUSES)[number];
@@ -25,6 +27,7 @@ export type QueueEntry = {
 export async function listQueue(): Promise<QueueEntry[]> {
   const rows = await db
     .select({
+      id: jobs.id,
       fileName: jobs.fileName,
       status: jobs.status,
       organization: organizations.name,
@@ -37,6 +40,7 @@ export async function listQueue(): Promise<QueueEntry[]> {
     .where(inArray(jobs.status, [...QUEUE_STATUSES]));
 
   return calculateQueueOrder(rows).map((r, i) => ({
+    id: r.id,
     position: i + 1,
     organization: r.organization,
     status: r.status as QueueEntry["status"],

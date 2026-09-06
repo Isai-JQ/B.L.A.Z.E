@@ -73,9 +73,9 @@ it("orders by manual_rank, then tier, then FIFO — and drops finished jobs", as
   expect(mine.map((e) => e.position)).toEqual([...mine.map((e) => e.position)].sort((a, b) => a - b));
 });
 
-it("exposes only position / organization / status / fileName — never file_path", async () => {
+it("exposes only id / position / organization / status / fileName — never file_path", async () => {
   const [entry] = (await listQueue()).filter((e) => e.fileName === "manual.gcode");
-  expect(Object.keys(entry).sort()).toEqual(["fileName", "organization", "position", "status"]);
+  expect(Object.keys(entry).sort()).toEqual(["fileName", "id", "organization", "position", "status"]);
   expect(entry.organization).toBe(tier2Org);
   expect(entry.status).toBe("waiting");
 });
