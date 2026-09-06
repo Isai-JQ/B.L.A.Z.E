@@ -136,7 +136,7 @@ Derivado de `plan.md` (Plan Técnico 001). Cada tarea es de menos de 30 min e in
 
 ## Fase 6 — Control de impresión
 
-- [ ] **T27.** Endpoints/comandos para pausar, reanudar y detener un job en curso, enviados vía MQTT a la impresora asignada. Solo el dueño del job (`user_id`) o un usuario con `role = 'admin'` puede ejecutarlos; cualquier otro recibe 403.
+- [x] **T27.** Endpoints/comandos para pausar, reanudar y detener un job en curso, enviados vía MQTT a la impresora asignada. Solo el dueño del job (`user_id`) o un usuario con `role = 'admin'` puede ejecutarlos; cualquier otro recibe 403.
   RF: RF-8
   Hecho cuando: cada comando, al ejecutarse contra una impresora simulada, dispara el mensaje MQTT correspondiente en `device/{serial}/request`.
 

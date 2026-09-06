@@ -181,6 +181,28 @@ async function sendJob(printer, job) {
   );
 }
 
+// T27: pause / resume / stop the job running on a printer. Publishes the Bambu print
+// control command (same shape as bambulabs_api's PAUSE/RESUME/STOP) to
+// device/<serial>/request through the per-serial MQTT client this process already keeps
+// for that printer (T14b/T23) — sent from the server, not the browser WS<->TLS bridge.
+// Throws if the action is unknown or the printer has no connected client, which is what
+// the /control HTTP hook turns into a non-2xx for the API route.
+const CONTROL_ACTIONS = new Set(["pause", "resume", "stop"]);
+
+async function sendControlCommand(printer, action) {
+  if (!CONTROL_ACTIONS.has(action)) throw new Error(`unknown control action: ${action}`);
+  const client = watched.get(printer.id);
+  if (!client?.connected) {
+    throw new Error(`no connected MQTT client for printer ${printer.serial_number}`);
+  }
+  const payload = JSON.stringify({ print: { sequence_id: "0", command: action, param: "" } });
+  await new Promise((resolve, reject) =>
+    client.publish(`device/${printer.serial_number}/request`, payload, { qos: 0 }, (e) =>
+      e ? reject(e) : resolve(),
+    ),
+  );
+}
+
 // First job of the calculated queue that `printerId` could take, or undefined. Nothing is
 // offered to a printer that already holds a job 'assigned'/'printing' (idempotent, T22).
 // 'waiting' jobs (T25) compete on equal terms with 'queued' ones.
@@ -356,6 +378,25 @@ async function syncPrinters(db, connect = mqtt.connect) {
 // `printerIp` is an optional override for the WS bridge target (defaults to bridgeHost).
 function start(port, printerIp) {
   const server = http.createServer((req, res) => {
+    // T27: the API route (pages/api/jobs/[id]/control.ts) checks permissions, then posts
+    // { printerId, serial, action } here so the command goes out over the per-serial
+    // client this process owns.
+    if (req.method === "POST" && req.url === "/control") {
+      let body = "";
+      req.on("data", (c) => (body += c));
+      req.on("end", async () => {
+        try {
+          const { printerId, serial, action } = JSON.parse(body || "{}");
+          await sendControlCommand({ id: printerId, serial_number: serial }, action);
+          res.writeHead(204).end();
+        } catch (e) {
+          console.error("→ /control failed:", e.message);
+          res.writeHead(502, { "content-type": "application/json" });
+          res.end(JSON.stringify({ error: e.message }));
+        }
+      });
+      return;
+    }
     if (req.url !== "/printers") {
       res.writeHead(404).end();
       return;
@@ -436,6 +477,7 @@ module.exports = {
   persistReport,
   assignNextJob,
   sendJob,
+  sendControlCommand,
   printers,
   watched,
 };
