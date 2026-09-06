@@ -2,12 +2,14 @@
   "artboards": [
     { "file": "Main.dc.html", "x": 0, "y": 0, "w": 1440, "h": 1000, "title": "Fleet en tiempo real" },
     { "file": "Queue.dc.html", "x": 1600, "y": 0, "w": 1440, "h": 1000, "title": "Cola de trabajos" },
-    { "file": "AdminReorder.dc.html", "x": 3200, "y": 0, "w": 1440, "h": 1000, "title": "Reordenar cola (admin)" }
+    { "file": "AdminReorder.dc.html", "x": 3200, "y": 0, "w": 1440, "h": 1000, "title": "Reordenar cola (admin)" },
+    { "file": "Auth.dc.html", "x": 4800, "y": 0, "w": 1440, "h": 1000, "title": "Login / Registro", "is_interactive": true }
   ],
   "annotations": [
     { "id": "note-fleet", "x": 0, "y": -96, "w": 460, "text": "RF-1 · Estado en tiempo real por impresora: temp nozzle/cama/cámara, progreso, capa, tiempo restante, estado g-code, filamento AMS. Controles pause/stop (RF-8)." },
     { "id": "note-queue", "x": 1600, "y": -96, "w": 460, "text": "RF-12 · Visible para cualquier usuario autenticado: posición, organización y estado de cada trabajo. Orden = prioridad de org (FrED > resto) + FIFO." },
-    { "id": "note-admin", "x": 3200, "y": -96, "w": 460, "text": "RF-13 · Solo admins. Arrastrar fija manual_rank por encima del orden automático, sin importar la organización. Guardado atómico frente a la asignación automática." }
+    { "id": "note-admin", "x": 3200, "y": -96, "w": 460, "text": "RF-13 · Solo admins. Arrastrar fija manual_rank por encima del orden automático, sin importar la organización. Guardado atómico frente a la asignación automática." },
+    { "id": "note-auth", "x": 4800, "y": -96, "w": 460, "text": "Pre-auth. El toggle cambia entre iniciar sesión y registro. En registro, el selector de organización incluye \"Otra…\", que revela un campo para nombrar una organización nueva. Prototipo: los controles funcionan en el canvas." }
   ],
-  "launch": { "view": "canvas" }
+  "launch": { "view": "focused", "file": "Auth.dc.html" }
 }

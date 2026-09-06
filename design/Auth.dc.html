@@ -1,0 +1,163 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <style>
+    body { margin: 0; font-family: Arial, Helvetica, sans-serif; background: #080A12; color: #ECECEE; -webkit-font-smoothing: antialiased; }
+    * { box-sizing: border-box; }
+    a { color: #6E9BF0; text-decoration: none; }
+    a:hover { color: #9DBEF7; }
+
+    .screen { min-height: 1000px; display: flex; align-items: center; justify-content: center; padding: 48px; }
+    .auth { width: 404px; }
+
+    .brandmark { display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 22px; }
+    .brandmark .glyph { width: 28px; height: 28px; border-radius: 7px; background: #0033A0; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 800; font-size: 14px; }
+    .brandmark .wm { font-weight: 800; font-size: 16px; letter-spacing: 0.14em; color: #fff; }
+
+    .card { display: flex; flex-direction: column; gap: 18px; padding: 26px 26px 28px; background: #12151F; border: 1px solid #232734; border-radius: 12px; }
+
+    .head { display: flex; flex-direction: column; gap: 6px; }
+    .head h1 { margin: 0; font-size: 21px; font-weight: 700; color: #fff; letter-spacing: -0.01em; }
+    .head .sub { margin: 0; font-size: 13px; color: #A0A1A6; line-height: 1.45; }
+
+    .seg-wrap { display: flex; gap: 3px; padding: 3px; background: #0C0F18; border: 1px solid #232734; border-radius: 999px; }
+    .seg { flex: 1; font: inherit; font-size: 13px; font-weight: 700; padding: 8px 14px; border: none; border-radius: 999px; background: transparent; color: #A0A1A6; cursor: pointer; }
+    .seg:hover { color: #CED0D5; }
+    .seg.on { background: #232734; color: #fff; }
+
+    .form { display: flex; flex-direction: column; gap: 16px; }
+    .field { display: flex; flex-direction: column; gap: 7px; }
+    .field label { font-size: 12px; font-weight: 600; color: #A0A1A6; }
+    .input { font: inherit; font-size: 14px; color: #ECECEE; background: #0C0F18; border: 1px solid #232734; border-radius: 8px; padding: 11px 12px; outline: none; width: 100%; }
+    .input::placeholder { color: #4F5058; }
+    .input:focus { border-color: #2E5AD6; box-shadow: 0 0 0 3px rgba(46,90,214,0.16); }
+
+    .pass { position: relative; }
+    .pass .input { padding-right: 42px; }
+    .eye { position: absolute; right: 5px; top: 50%; transform: translateY(-50%); display: flex; padding: 8px; background: none; border: none; color: #74757B; cursor: pointer; }
+    .eye:hover { color: #A0A1A6; }
+    .eye svg { width: 16px; height: 16px; }
+
+    .select-wrap { position: relative; }
+    select.input { appearance: none; -webkit-appearance: none; padding-right: 36px; cursor: pointer; }
+    .input option { background: #12151F; color: #ECECEE; }
+    .chev { position: absolute; right: 11px; top: 50%; transform: translateY(-50%); display: flex; pointer-events: none; color: #74757B; }
+    .chev svg { width: 16px; height: 16px; }
+    .otra-input { margin-top: 2px; }
+
+    .submit { width: 100%; font: inherit; font-size: 14px; font-weight: 700; padding: 12px; border-radius: 8px; border: 1px solid #0033A0; background: #0033A0; color: #fff; cursor: pointer; }
+    .submit:hover { background: #00297F; border-color: #00297F; }
+
+    .forgot { text-align: center; }
+    .forgot a { font-size: 13px; }
+  </style>
+</helmet>
+
+<div class="screen">
+  <div class="auth">
+    <div class="brandmark"><span class="glyph">B</span><span class="wm">B.L.A.Z.E</span></div>
+
+    <div class="card">
+      <div class="head">
+        <h1>{{heading}}</h1>
+        <p class="sub">Plataforma de monitoreo y control del fleet de impresoras P1S.</p>
+      </div>
+
+      <div class="seg-wrap">
+        <button type="button" class="{{loginSegClass}}" onClick="{{setLogin}}">Iniciar sesión</button>
+        <button type="button" class="{{registerSegClass}}" onClick="{{setRegister}}">Registrarse</button>
+      </div>
+
+      <div class="form">
+        <div class="field">
+          <label>Correo</label>
+          <input class="input" type="email" placeholder="tú@organización.mx" autocomplete="email">
+        </div>
+
+        <div class="field">
+          <label>Contraseña</label>
+          <div class="pass">
+            <input class="input" type="{{passType}}" placeholder="••••••••" autocomplete="current-password">
+            <button type="button" class="eye" onClick="{{togglePass}}" aria-label="Mostrar u ocultar contraseña">
+              <sc-if value="{{showPass}}" hint-placeholder-val="{{ true }}">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19M14.12 14.12a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+              </sc-if>
+              <sc-if value="{{hidePass}}" hint-placeholder-val="{{ true }}">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>
+              </sc-if>
+            </button>
+          </div>
+        </div>
+
+        <sc-if value="{{isRegister}}" hint-placeholder-val="{{ true }}">
+          <div class="field">
+            <label>Organización</label>
+            <div class="select-wrap">
+              <select class="input" defaultValue="" onChange="{{onOrgChange}}">
+                <option value="" disabled>Selecciona tu organización</option>
+                <option value="roborregos">RoBorregos</option>
+                <option value="fred">FrED-Factory</option>
+                <option value="vanttec">VantTec</option>
+                <option value="astro">Astro Club</option>
+                <option value="otra">Otra…</option>
+              </select>
+              <span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span>
+            </div>
+            <sc-if value="{{isOtra}}" hint-placeholder-val="{{ true }}">
+              <input class="input otra-input" type="text" placeholder="Nombre de la organización nueva">
+            </sc-if>
+          </div>
+        </sc-if>
+      </div>
+
+      <button type="button" class="submit">{{cta}}</button>
+
+      <sc-if value="{{isLogin}}" hint-placeholder-val="{{ true }}">
+        <div class="forgot"><a href="#">¿Olvidaste tu contraseña?</a></div>
+      </sc-if>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script data-dc-script data-props='{"mode":{"editor":"enum","options":["login","register"],"default":"login"},"$preview":{"width":1440,"height":1000}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { mode: props.mode === 'register' ? 'register' : 'login', org: '', showPass: false };
+  }
+  componentDidUpdate(prev) {
+    if (prev.mode !== this.props.mode) {
+      this.setState({ mode: this.props.mode === 'register' ? 'register' : 'login' });
+    }
+  }
+  renderVals() {
+    const isRegister = this.state.mode === 'register';
+    const isLogin = !isRegister;
+    const showPass = !!this.state.showPass;
+    return {
+      isLogin,
+      isRegister,
+      isOtra: this.state.org === 'otra',
+      showPass,
+      hidePass: !showPass,
+      passType: showPass ? 'text' : 'password',
+      heading: isRegister ? 'Crea tu cuenta' : 'Inicia sesión',
+      cta: isRegister ? 'Crear cuenta' : 'Entrar',
+      loginSegClass: isLogin ? 'seg on' : 'seg',
+      registerSegClass: isRegister ? 'seg on' : 'seg',
+      setLogin: () => this.setState({ mode: 'login' }),
+      setRegister: () => this.setState({ mode: 'register' }),
+      onOrgChange: (e) => this.setState({ org: e.target.value }),
+      togglePass: () => this.setState({ showPass: !this.state.showPass }),
+    };
+  }
+}
+</script>
+</body>
+</html>
