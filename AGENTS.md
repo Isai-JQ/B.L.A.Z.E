@@ -4,7 +4,7 @@
 Plataforma web de B.L.A.Z.E v2 para monitorear y controlar un fleet de impresoras Bambu Lab P1S, con una cola de prioridad automática por organización. Next.js (Pages Router) + TypeScript + Tailwind CSS en el frontend; Supabase (Auth + Postgres) vía Drizzle ORM para persistencia; un servicio Node local, extensión de `proxy.cjs`, habla MQTT con las impresoras y corre la lógica de asignación de la cola.
 
 ## Comandos
-- Ejecutar: `pnpm dev` (dashboard) + `pnpm gateway` (gateway MQTT = `tsx proxy.cjs`, en otra terminal; lee las impresoras registradas directo de la tabla `printers`, ya no recibe IP/access code por CLI desde T14b; corre con `tsx` y no con `node` plano porque importa `lib/queueOrder.ts` desde T22)
+- Ejecutar: `pnpm dev` (dashboard) + `pnpm gateway` (gateway MQTT = `tsx proxy.cjs`, en otra terminal; lee las impresoras registradas directo de la tabla `printers`, ya no recibe IP/access code por CLI desde T14b; corre con `tsx` y no con `node` plano porque importa `lib/queueOrder.ts` desde T22; desde T23 también sube el archivo del job a la impresora por FTPS e inicia la impresión, así que necesita `SUPABASE_SERVICE_ROLE_KEY` en `.env` para leer el archivo de Storage)
 - Tests: `pnpm test`
 - Lint/formato: `pnpm lint`
 - Base de datos: `pnpm db:push` / `pnpm db:studio`

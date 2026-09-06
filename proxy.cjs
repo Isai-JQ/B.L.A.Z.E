@@ -13,6 +13,12 @@
 // T22: when a printer reports itself free, the highest-priority queued job (order from
 // lib/queueOrder.ts) is assigned to it. That import is why this runs under tsx, not node.
 //
+// T23: assigning also *sends* the job: the stored file (jobs.file_path, T20) goes to the
+// printer over implicit FTPS and the print is started over MQTT, ported from
+// bambulabs_api (ftp_client.py / mqtt_client.start_print_3mf), which the reference repo
+// drove from src/scripts/add_job.py. If sending fails for any reason the assignment is
+// reverted and the next free printer of the fleet is tried.
+//
 // Usage: pnpm gateway   (= tsx proxy.cjs)
 //        WS_PORT=9001 (default) serves both the WebSocket bridge and GET /printers.
 
@@ -24,9 +30,13 @@ const { WebSocketServer } = require("ws");
 const { drizzle } = require("drizzle-orm/postgres-js");
 const { sql } = require("drizzle-orm");
 const postgres = require("postgres");
+const { Readable } = require("node:stream");
+const ftp = require("basic-ftp");
 const { calculateQueueOrder } = require("./lib/queueOrder.ts");
+const { supabaseAdmin } = require("./lib/supabaseAdmin.ts");
 
 const PRINTER_PORT = 8883;
+const PRINTER_FTP_PORT = 990;
 const PRINTERS_RELOAD_MS = 30_000;
 const OFFLINE_CHECK_MS = 15_000;
 const OFFLINE_AFTER_SECONDS = 45;
@@ -111,14 +121,67 @@ async function persistReport(db, state) {
   if (status === "idle" && row) await assignNextJob(db, row.id);
 }
 
-// Assigns the first job of the calculated queue to a free printer (T22). Returns the
-// job id, or null if nothing was assigned. Idempotent: a printer that already has a job
-// 'assigned'/'printing' gets nothing, and the UPDATE re-checks status = 'queued' so two
-// printers freeing up at once cannot both take the same job (the loser just retries on
-// its next idle report, which is also what picks up a job queued while it sat idle).
+// Uploads the job file to the printer and starts the print (T23). Port of the reference
+// flow (add_job.py → bambulabs_api): implicit FTPS on 990 as `bblp` / access code with
+// PROT P, `STOR <file_name>`, then a `project_file` command on device/<serial>/request.
+// Throws on any failure (FTP unreachable, login rejected, MQTT client down), which is
+// what assignNextJob uses to fall back to another printer.
+async function sendJob(printer, job) {
+  const slash = job.file_path.indexOf("/");
+  const { data, error } = await supabaseAdmin()
+    .storage.from(job.file_path.slice(0, slash))
+    .download(job.file_path.slice(slash + 1));
+  if (error) throw new Error(`download ${job.file_path}: ${error.message}`);
+
+  const client = new ftp.Client();
+  try {
+    await client.access({
+      host: printer.ip_address,
+      port: PRINTER_FTP_PORT,
+      user: "bblp",
+      password: printer.access_code,
+      secure: "implicit",
+      secureOptions: { rejectUnauthorized: false }, // self-signed, like the MQTT side
+    });
+    await client.uploadFrom(Readable.from(Buffer.from(await data.arrayBuffer())), job.file_name);
+  } finally {
+    client.close();
+  }
+
+  const mqttClient = watched.get(printer.id);
+  if (!mqttClient?.connected) throw new Error("printer MQTT client is not connected");
+  // Same payload as bambulabs_api.start_print(filename, plate_number=1).
+  // ponytail: plate 1 / textured plate / AMS slot 0 hard-coded, as in the reference
+  // add_job.py; make them job fields when the upload form asks for them.
+  const command = {
+    print: {
+      command: "project_file",
+      param: "Metadata/plate_1.gcode",
+      file: job.file_name,
+      bed_leveling: true,
+      bed_type: "textured_plate",
+      flow_cali: true,
+      vibration_cali: true,
+      url: `ftp:///${job.file_name}`,
+      layer_inspect: false,
+      sequence_id: "10000000",
+      use_ams: true,
+      ams_mapping: [0],
+      skip_objects: null,
+    },
+  };
+  await new Promise((resolve, reject) =>
+    mqttClient.publish(`device/${printer.serial_number}/request`, JSON.stringify(command), { qos: 0 }, (e) =>
+      e ? reject(e) : resolve(),
+    ),
+  );
+}
+
+// First job of the calculated queue that `printerId` could take, or undefined. Nothing is
+// offered to a printer that already holds a job 'assigned'/'printing' (idempotent, T22).
 // ponytail: one SELECT per idle report per printer; if that ever shows on the DB, gate
 // it on the idle transition + an enqueue-time trigger instead.
-async function assignNextJob(db, printerId) {
+async function nextQueuedJob(db, printerId) {
   const rows = await db.execute(
     sql`select j.id, j.manual_rank, j.created_at, o.priority_tier
         from jobs j join organizations o on o.id = j.organization_id
@@ -127,21 +190,70 @@ async function assignNextJob(db, printerId) {
                           where b.printer_id = ${printerId}
                             and b.status in ('assigned', 'printing'))`,
   );
-  const [next] = calculateQueueOrder(
+  return calculateQueueOrder(
     rows.map((r) => ({
       id: r.id,
       priorityTier: r.priority_tier,
       createdAt: new Date(r.created_at),
       manualRank: r.manual_rank,
     })),
+  )[0];
+}
+
+// A free printer of the fleet not in `exclude`: 'idle' in the DB and holding no job.
+async function nextFreePrinter(db, exclude) {
+  const [row] = await db.execute(
+    sql`select id from printers p
+        where p.status = 'idle' and p.id not in ${exclude}
+          and not exists (select 1 from jobs b
+                          where b.printer_id = p.id and b.status in ('assigned', 'printing'))
+        limit 1`,
   );
+  return row?.id ?? null;
+}
+
+// Assigns the first job of the calculated queue to a free printer (T22) and sends it
+// (T23). Returns the job id, or null if nothing was assigned. The UPDATE re-checks
+// status = 'queued' so two printers freeing up at once cannot both take the same job
+// (the loser just retries on its next idle report, which is also what picks up a job
+// queued while it sat idle). If sending fails — the printer's DB status said 'idle' but
+// it does not answer, FTP rejects the file, MQTT is down — the assignment is reverted
+// and the next free printer is tried, until one takes it or none are left (the job
+// goes back to 'queued' and waits for the next idle report). A successful send moves
+// the job to 'printing'. `send` is injectable so tests can fake the FTP/MQTT leg.
+async function assignNextJob(db, printerId, send = module.exports.sendJob) {
+  const next = await nextQueuedJob(db, printerId);
   if (!next) return null;
-  const [done] = await db.execute(
-    sql`update jobs set printer_id = ${printerId}, status = 'assigned'
-        where id = ${next.id} and status = 'queued' returning id`,
-  );
-  if (done) console.log(`→ Job ${done.id} assigned to printer ${printerId}`);
-  return done?.id ?? null;
+
+  const tried = [];
+  for (let printer = printerId; printer; printer = await nextFreePrinter(db, tried)) {
+    tried.push(printer);
+    const [job] = await db.execute(
+      sql`update jobs set printer_id = ${printer}, status = 'assigned'
+          where id = ${next.id} and status = 'queued' returning id, file_name, file_path`,
+    );
+    if (!job) return null; // another printer claimed it first
+    console.log(`→ Job ${job.id} assigned to printer ${printer}`);
+
+    const [row] = await db.execute(
+      sql`select id, ip_address, access_code, serial_number from printers where id = ${printer}`,
+    );
+    try {
+      await send(row, job);
+    } catch (e) {
+      console.error(`→ Job ${job.id}: send to printer ${printer} failed (${e.message}), retrying elsewhere`);
+      await db.execute(
+        sql`update jobs set printer_id = null, status = 'queued' where id = ${job.id}`,
+      );
+      continue;
+    }
+    await db.execute(
+      sql`update jobs set status = 'printing', started_at = now() where id = ${job.id}`,
+    );
+    console.log(`→ Job ${job.id} printing on printer ${printer}`);
+    return job.id;
+  }
+  return null;
 }
 
 // Persistent MQTT client to one printer. mqtt.js handles reconnection on its own.
@@ -301,6 +413,7 @@ module.exports = {
   handleReport,
   persistReport,
   assignNextJob,
+  sendJob,
   printers,
   watched,
 };

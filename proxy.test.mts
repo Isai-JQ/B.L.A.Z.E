@@ -8,8 +8,17 @@ import { afterAll, beforeAll, expect, it } from "vitest";
 
 // proxy.cjs is CommonJS and runs outside Next.js (plain `node proxy.cjs`), so it is
 // required rather than imported.
-const { start, syncPrinters, sweepOffline, handleReport, printers } =
-  createRequire(import.meta.url)("./proxy.cjs");
+const proxy = createRequire(import.meta.url)("./proxy.cjs");
+const { start, syncPrinters, sweepOffline, handleReport, printers } = proxy;
+
+// T23: fake FTP/MQTT leg. Printers whose IP is in `unreachable` behave like a P1S that
+// the DB still lists as idle but does not answer: the send throws, as basic-ftp would.
+const unreachable = new Set<string>();
+const sent: Array<{ ip: string; jobId: string }> = [];
+proxy.sendJob = async (printer: { ip_address: string }, job: { id: string }) => {
+  sent.push({ ip: printer.ip_address, jobId: job.id });
+  if (unreachable.has(printer.ip_address)) throw new Error(`connect ETIMEDOUT ${printer.ip_address}:990`);
+};
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -239,10 +248,11 @@ it("marks a stale printer offline on sweep without touching the others (T17)", a
 
 // ---------------------------------------------------------------------------
 // T22: a printer that reports itself free pulls the first job of the calculated
-// queue (tier → FIFO → manual_rank) and gets it as `assigned`. Two orgs: the
-// trigger-provisioned one (tier 2) and a tier-1 one inserted by hand, so the
-// later, higher-priority job must win. A printer holding an assigned job takes
-// nothing more; the next free printer takes what is left.
+// queue (tier → FIFO → manual_rank) and gets it as `assigned`; since T23 the
+// send then moves it to `printing`. Two orgs: the trigger-provisioned one (tier 2)
+// and a tier-1 one inserted by hand, so the later, higher-priority job must win.
+// A printer holding a job takes nothing more; the next free printer takes what
+// is left.
 // ---------------------------------------------------------------------------
 
 const t22 = {
@@ -251,6 +261,7 @@ const t22 = {
   topOrgName: `t22-test-top-org-${suffix}`,
   jobLow: randomUUID(),
   jobTop: randomUUID(),
+  jobT23: randomUUID(),
 };
 
 // Registered after the T14b afterAll, so with vitest's default "stack" hook order
@@ -276,6 +287,14 @@ const waitForJobStatus = async (id: string, want: string) => {
     await sleep(25);
   }
   throw new Error(`timeout: job ${id} never reached status=${want}`);
+};
+
+const until = async (cond: () => boolean | Promise<boolean>, what: string) => {
+  for (let i = 0; i < 80; i++) {
+    if (await cond()) return;
+    await sleep(25);
+  }
+  throw new Error(`timeout: ${what}`);
 };
 
 it("assigns the highest-priority queued job to a printer that becomes free (T22)", async () => {
@@ -305,7 +324,8 @@ it("assigns the highest-priority queued job to a printer that becomes free (T22)
 
   // Printer B finishes its print → free → takes the tier-1 job, not the older tier-2 one.
   emit("10.0.0.202", fleet[1].serial, { gcode_state: "FINISH" });
-  expect(await waitForJobStatus(t22.jobTop, "assigned")).toMatchObject({ printer_id: printerB });
+  expect(await waitForJobStatus(t22.jobTop, "printing")).toMatchObject({ printer_id: printerB });
+  expect(sent).toContainEqual({ ip: "10.0.0.202", jobId: t22.jobTop });
   expect(await jobRow(t22.jobLow)).toMatchObject({ status: "queued", printer_id: null });
 
   // B keeps reporting idle while it holds an assigned job: it must not grab a second one.
@@ -316,5 +336,48 @@ it("assigns the highest-priority queued job to a printer that becomes free (T22)
 
   // Printer A frees up → takes the remaining job.
   emit("10.0.0.201", fleet[0].serial, { gcode_state: "IDLE" });
-  expect(await waitForJobStatus(t22.jobLow, "assigned")).toMatchObject({ printer_id: printerA });
+  expect(await waitForJobStatus(t22.jobLow, "printing")).toMatchObject({ printer_id: printerA });
+});
+
+// ---------------------------------------------------------------------------
+// T23: the printer that frees up is 'idle' in the DB but does not answer when
+// the job is sent (FTP/MQTT fake throws). The assignment is reverted and the
+// job ends up printing on the other free printer. With no printer answering,
+// the job goes back to 'queued' with no printer, waiting for the next report.
+// ---------------------------------------------------------------------------
+
+it("falls back to the next free printer when the send fails (T23)", async () => {
+  // Both printers are free again: the T22 jobs are done.
+  await sql`update jobs set status = 'completed' where user_id = ${t22.userId}`;
+  const [lowOrg] = await sql`select id from organizations where name = ${t22.orgName}`;
+  await sql`
+    insert into jobs (id, user_id, organization_id, file_name, file_path, status)
+    values (${t22.jobT23}, ${t22.userId}, ${lowOrg.id}, 't23.3mf', 'pending://t23', 'queued')
+  `;
+  const [{ id: printerA }] = await sql`select id from printers where serial_number = ${fleet[0].serial}`;
+  const [{ id: printerB }] = await sql`select id from printers where serial_number = ${fleet[1].serial}`;
+  await sql`update printers set status = 'idle' where id in (${printerA}, ${printerB})`;
+
+  await syncPrinters(db, fakeConnect);
+  const emit = (ip: string, serial: string, print: Record<string, unknown>) =>
+    stubs
+      .find((s) => s.url.includes(ip))!
+      .emit("message", `device/${serial}/report`, Buffer.from(JSON.stringify({ print })));
+
+  // Nobody answers: the job is tried on B, then A, and returns to the queue unassigned.
+  unreachable.add("10.0.0.202").add("10.0.0.201");
+  sent.length = 0;
+  emit("10.0.0.202", fleet[1].serial, { gcode_state: "IDLE" });
+  await until(() => sent.length === 2, "job tried on both printers");
+  expect(sent.map((s) => s.ip)).toEqual(["10.0.0.202", "10.0.0.201"]);
+  await until(async () => (await jobRow(t22.jobT23)).printer_id === null, "assignment reverted");
+  expect(await jobRow(t22.jobT23)).toMatchObject({ status: "queued", printer_id: null });
+
+  // B reports idle again but still does not answer; A does → the job prints on A.
+  unreachable.delete("10.0.0.201");
+  sent.length = 0;
+  emit("10.0.0.202", fleet[1].serial, { gcode_state: "IDLE" });
+  expect(await waitForJobStatus(t22.jobT23, "printing")).toMatchObject({ printer_id: printerA });
+  expect(sent.map((s) => s.ip)).toEqual(["10.0.0.202", "10.0.0.201"]);
+  expect(Date.parse((await sql`select started_at from jobs where id = ${t22.jobT23}`)[0].started_at)).not.toBeNaN();
 });
