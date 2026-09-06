@@ -76,7 +76,7 @@ afterAll(async () => {
 it("creates one queued jobs row with the right data for a valid upload", async () => {
   await sql`
     insert into auth.users (id, aud, role, email, raw_user_meta_data)
-    values (${userId}, 'authenticated', 'authenticated', ${`${userId}@blaze.test`},
+    values (${userId}, 'authenticated', 'authenticated', ${`${userId}@tec.mx`},
             jsonb_build_object('organization_name', ${orgName}::text))
   `;
   const [org] = await sql`select id from organizations where name = ${orgName}`;

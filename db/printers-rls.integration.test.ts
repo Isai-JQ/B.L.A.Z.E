@@ -50,7 +50,7 @@ describe("T16b printers RLS: deny-all from the client (live Supabase)", () => {
   });
 
   it("blocks an authenticated user from reading printers", async () => {
-    userId = await createAuthUser(`printers-rls-${suffix}@blaze.test`, orgName);
+    userId = await createAuthUser(`printers-rls-${suffix}@tec.mx`, orgName);
 
     // Server (table owner, not subject to RLS) inserts a real row.
     await sql`

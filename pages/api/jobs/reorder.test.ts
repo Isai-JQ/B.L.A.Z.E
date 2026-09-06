@@ -44,7 +44,7 @@ const queued = async () =>
 beforeAll(async () => {
   await db.execute(sql`
     insert into auth.users (id, aud, role, email, raw_user_meta_data)
-    values (${userId}, 'authenticated', 'authenticated', ${`${userId}@blaze.test`},
+    values (${userId}, 'authenticated', 'authenticated', ${`${userId}@tec.mx`},
             jsonb_build_object('organization_name', ${orgName}::text))
   `);
   const [org] = await db.execute(sql`select id from organizations where name = ${orgName}`);

@@ -301,7 +301,7 @@ const until = async (cond: () => boolean | Promise<boolean>, what: string) => {
 it("assigns the highest-priority queued job to a printer that becomes free (T22)", async () => {
   await sql`
     insert into auth.users (id, aud, role, email, raw_user_meta_data)
-    values (${t22.userId}, 'authenticated', 'authenticated', ${`${t22.userId}@blaze.test`},
+    values (${t22.userId}, 'authenticated', 'authenticated', ${`${t22.userId}@tec.mx`},
             jsonb_build_object('organization_name', ${t22.orgName}::text))
   `;
   const [lowOrg] = await sql`select id from organizations where name = ${t22.orgName}`;
