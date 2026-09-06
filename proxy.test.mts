@@ -420,3 +420,36 @@ it("fails the printing job and notifies its owner when its printer goes offline 
   await sweepOffline(db, 30);
   expect(await sql`select 1 from notifications where job_id = ${t22.jobT23}`).toHaveLength(1);
 });
+
+// ---------------------------------------------------------------------------
+// T25: a job uploaded while no printer is free (A offline, B printing after T24)
+// is created as 'waiting' and its owner is notified. When B later frees up, the
+// waiting job is assigned and sent exactly like a queued one would be.
+// ---------------------------------------------------------------------------
+
+it("leaves a new job waiting with a notification when no printer is free, then assigns it once one frees up (T25)", async () => {
+  // Nothing else in the queue, so the waiting job is the next one when B frees up.
+  await sql`update jobs set status = 'completed' where user_id = ${t22.userId} and status = 'queued'`;
+  expect((await rowFor(fleet[0].serial)).status).toBe("offline");
+  expect((await rowFor(fleet[1].serial)).status).toBe("printing");
+
+  const { createQueuedJob } = await import("./pages/api/jobs/upload");
+  const res = await createQueuedJob(t22.userId, "t25.gcode", "pending://t25");
+  expect(res.status).toBe(201);
+  const jobId = (res.body as { id: string }).id;
+  expect(await jobRow(jobId)).toMatchObject({ status: "waiting", printer_id: null });
+  const notes = await sql`select user_id, type, message from notifications where job_id = ${jobId}`;
+  expect(notes).toHaveLength(1);
+  expect(notes[0]).toMatchObject({ user_id: t22.userId, type: "job_waiting" });
+  expect(notes[0].message).toMatch(/waiting/);
+
+  // B finishes its print and answers again → it takes the waiting job like a queued one.
+  unreachable.delete("10.0.0.202");
+  const [{ id: printerB }] = await sql`select id from printers where serial_number = ${fleet[1].serial}`;
+  await syncPrinters(db, fakeConnect);
+  stubs
+    .find((s) => s.url.includes("10.0.0.202"))!
+    .emit("message", `device/${fleet[1].serial}/report`, Buffer.from(JSON.stringify({ print: { gcode_state: "FINISH" } })));
+  expect(await waitForJobStatus(jobId, "printing")).toMatchObject({ printer_id: printerB });
+  expect(sent).toContainEqual({ ip: "10.0.0.202", jobId });
+});

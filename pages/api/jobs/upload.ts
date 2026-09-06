@@ -1,10 +1,10 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { randomUUID } from "node:crypto";
-import { eq } from "drizzle-orm";
+import { and, eq, inArray, notExists } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { supabase } from "@/lib/supabase";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { jobs, userProfiles } from "@/db/schema";
+import { jobs, notifications, printers, userProfiles } from "@/db/schema";
 
 // T18: validate an uploaded print file (extension + declared max size), rejecting
 // anything that fails with a clear 400.
@@ -13,6 +13,10 @@ import { jobs, userProfiles } from "@/db/schema";
 // T20: stream the bytes into a private Supabase Storage bucket, cutting the write
 // off at the *real* size (the client's Content-Length is not trusted, see T18),
 // and store the real object path in jobs.file_path.
+// T25: if no printer of the fleet is free at that moment (all offline / printing /
+// holding an assigned job) the row is inserted as 'waiting' instead and the uploader
+// gets a 'job_waiting' notification. The gateway treats 'waiting' exactly like
+// 'queued' when a printer frees up (proxy.cjs assignNextJob).
 // The pieces below are exported so tests can exercise them without minting a real
 // JWT; the default export is the thin HTTP layer.
 
@@ -78,6 +82,21 @@ function objectKey(userId: string, fileName: string): string {
   return `${userId}/${randomUUID()}${ext}`;
 }
 
+// A free printer: 'idle' in the DB and holding no job. Same rule as the gateway's
+// nextFreePrinter (proxy.cjs), which is what will actually take the job.
+async function anyPrinterFree(): Promise<boolean> {
+  const busy = db
+    .select({ id: jobs.id })
+    .from(jobs)
+    .where(and(eq(jobs.printerId, printers.id), inArray(jobs.status, ["assigned", "printing"])));
+  const [free] = await db
+    .select({ id: printers.id })
+    .from(printers)
+    .where(and(eq(printers.status, "idle"), notExists(busy)))
+    .limit(1);
+  return Boolean(free);
+}
+
 export async function createQueuedJob(
   userId: string,
   fileName: string,
@@ -89,17 +108,22 @@ export async function createQueuedJob(
     .where(eq(userProfiles.id, userId));
   if (!profile) return { status: 403, body: { error: "no user profile / organization" } };
 
-  const [row] = await db
-    .insert(jobs)
-    .values({
-      userId,
-      organizationId: profile.organizationId,
-      fileName,
-      filePath,
-      status: "queued",
-    })
-    .returning();
-  return { status: 201, body: row };
+  const status = (await anyPrinterFree()) ? "queued" : "waiting";
+  return db.transaction(async (tx) => {
+    const [row] = await tx
+      .insert(jobs)
+      .values({ userId, organizationId: profile.organizationId, fileName, filePath, status })
+      .returning();
+    if (status === "waiting") {
+      await tx.insert(notifications).values({
+        userId,
+        jobId: row.id,
+        type: "job_waiting",
+        message: `No printer is free right now: ${fileName} is on the waiting list`,
+      });
+    }
+    return { status: 201, body: row };
+  });
 }
 
 // Full pipeline: validate metadata -> read + cap the bytes -> store in the private

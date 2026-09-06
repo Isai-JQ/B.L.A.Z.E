@@ -65,6 +65,7 @@ afterAll(async () => {
       await supabaseAdmin().storage.from(p.slice(0, slash)).remove([p.slice(slash + 1)]);
     }
   }
+  await sql`delete from notifications where user_id = ${userId}`; // T25 'job_waiting'
   await sql`delete from jobs where user_id = ${userId}`;
   await sql`delete from user_profiles where id = ${userId}`;
   await sql`delete from auth.users where id = ${userId}`;
@@ -90,7 +91,10 @@ it("creates one queued jobs row with the right data for a valid upload", async (
     organizationId: org.id,
     fileName: "benchy.gcode",
     filePath: `${STORAGE_BUCKET}/benchy-fixed.gcode`,
-    status: "queued",
+    // 'queued' if some printer is free, 'waiting' if none is (T25): the fleet is shared
+    // with proxy.test.mts, which flips printers around concurrently, so the branch
+    // itself is verified there under a controlled fleet.
+    status: expect.stringMatching(/^(queued|waiting)$/),
     printerId: null,
   });
 });
