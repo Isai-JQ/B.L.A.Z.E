@@ -122,7 +122,7 @@ Derivado de `plan.md` (Plan Técnico 001). Cada tarea es de menos de 30 min e in
   RF: RF-6
   Hecho cuando: simulando una impresora offline al momento de asignar, el job termina asignado a otra impresora libre.
 
-- [ ] **T24.** Si una impresora se desconecta mientras un job tiene `status = 'printing'`, marcar el job como `failed` y crear una notificación.
+- [x] **T24.** Si una impresora se desconecta mientras un job tiene `status = 'printing'`, marcar el job como `failed` y crear una notificación.
   RF: RF-7
   Hecho cuando: al simular la desconexión de una impresora con un job en curso, el job pasa a `failed` y aparece una fila en `notifications`.
 
