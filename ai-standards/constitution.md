@@ -2,7 +2,7 @@
 
 1. Stack: Next.js + TypeScript + Tailwind CSS, gestionado con pnpm.
 2. Persistencia y auth: Supabase (Postgres + Auth) vía Drizzle ORM.
-3. Comunicación con impresoras (fase web): mqtt.js en el navegador + proxy local WS↔TLS; sin depender de Raspberry Pi hasta que llegue el hardware.
+3. Comunicación con impresoras (fase web): el gateway (extensión de `proxy.cjs`) mantiene una conexión MQTT por impresora y centraliza el estado del fleet; el navegador lo consume por HTTP polling a `GET /printers`, sin hablar MQTT directo. Sin depender de Raspberry Pi hasta que llegue el hardware.
 4. Cero modificación de firmware o hardware de las impresoras Bambu Lab.
 5. Repositorio nuevo para B.L.A.Z.E v2; se reutiliza código de `Automatize-3D-printers` como referencia, pero no se continúa trabajando sobre ese repo. Lo descartado se justifica en `plan.md`.
 6. Identificadores y comentarios de código en inglés; documentación de proyecto en español.

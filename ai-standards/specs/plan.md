@@ -1,226 +1,118 @@
-# Tareas 001 — Plataforma Web B.L.A.Z.E v2
+# Plan Técnico 001 — Plataforma Web B.L.A.Z.E v2
 
-Derivado de `plan.md` (Plan Técnico 001). Cada tarea es de menos de 30 min e incluye el/los RF que cubre y una línea "Hecho cuando:" verificable.
+Basado en `docs/constitution.md` y `spec.md` (Spec 001). Solo el CÓMO: arquitectura y datos, sin código.
 
-## Fase 0 — Setup del proyecto
+## Módulos
 
-- [ ] **T1.** Crear repo nuevo con Next.js (Pages Router) + TypeScript + Tailwind CSS, gestionado con pnpm.
-  RF: — (infraestructura)
-  Hecho cuando: `pnpm dev` levanta una página en blanco sin errores.
+| Módulo | Responsabilidad |
+|---|---|
+| **Auth** | Login/registro con Supabase Auth; asocia cada usuario a una organización y un rol (`member` / `admin`). |
+| **Organizations** | CRUD mínimo de organizaciones y su nivel de prioridad. Permite dar de alta grupos nuevos sin tocar código. |
+| **Fleet** | Registro de impresoras del laboratorio y su estado (libre, imprimiendo, offline). |
+| **MQTT Gateway** | Servicio local que habla MQTT con cada impresora (vía proxy TLS), mantiene el estado del fleet actualizado y ejecuta comandos de control. Es el único lugar que sabe si una impresora está libre. |
+| **Queue Engine** | Calcula el orden de la cola (prioridad de organización + FIFO + overrides de admin) y decide qué trabajo se asigna cuando una impresora queda libre. |
+| **Jobs** | Recibe archivos subidos, valida, persiste metadata, guarda el estado de cada trabajo. |
+| **Notifications** | Genera y entrega avisos in-app (trabajo fallido, trabajo en lista de espera). |
+| **Dashboard UI** | Monitoreo en tiempo real, control manual (pause/resume/stop), vista de cola, panel de reordenamiento para admin. |
 
-- [ ] **T2.** Crear proyecto en Supabase y archivo `.env.example` con las variables necesarias (`DATABASE_URL`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_WS_PROXY_URL`).
-  RF: — (infraestructura)
-  Hecho cuando: `.env.example` existe en el repo y `.env` real está en `.gitignore`.
+## Modelo de datos
 
-- [ ] **T3.** Configurar Drizzle ORM (`drizzle.config.ts`) apuntando al proyecto de Supabase.
-  RF: — (infraestructura)
-  Hecho cuando: `pnpm db:studio` conecta sin errores a la base de datos.
+```
+organizations
+├─ id (uuid, PK)
+├─ name
+├─ priority_tier (int)     -- 1 = FrED-Factory, 2 = todos los demás
+└─ created_at
 
-## Fase 1 — Modelo de datos
+user_profiles
+├─ id (uuid, PK, = auth.users.id)
+├─ email
+├─ organization_id (FK → organizations)
+├─ role ('member' | 'admin')
+└─ created_at
 
-- [ ] **T4.** Definir tabla `organizations` (id, name, priority_tier) en el esquema Drizzle.
-  RF: RF-9
-  Hecho cuando: `pnpm db:push` crea la tabla y se puede insertar una fila de prueba.
+printers
+├─ id (serial, PK)
+├─ serial_number
+├─ name
+├─ ip_address
+├─ access_code
+├─ status ('idle' | 'printing' | 'offline')
+├─ last_seen_at
+└─ created_at
 
-- [ ] **T5.** Definir tabla `user_profiles` (id, email, organization_id, role) con FK a `organizations`.
-  RF: RF-9
-  Hecho cuando: `pnpm db:push` crea la tabla con la FK aplicada.
+jobs
+├─ id (serial, PK)
+├─ user_id (FK → user_profiles)
+├─ organization_id (FK → organizations, denormalizado para ordenar sin join)
+├─ printer_id (FK → printers, nullable hasta asignarse)
+├─ file_name / file_path
+├─ status ('queued' | 'waiting' | 'printing' | 'completed' | 'failed')
+├─ manual_rank (int, nullable — override de un admin)
+├─ failure_reason (nullable)
+├─ created_at / started_at / finished_at
 
-- [ ] **T6.** Definir tabla `printers` (id, serial_number, name, ip_address, access_code, status, last_seen_at).
-  RF: RF-1, RF-5, RF-6
-  Hecho cuando: `pnpm db:push` crea la tabla y admite los tres valores de `status`.
+notifications
+├─ id (serial, PK)
+├─ user_id (FK → user_profiles)
+├─ job_id (FK → jobs)
+├─ type ('job_failed' | 'job_waiting')
+├─ message
+├─ read_at (nullable)
+└─ created_at
+```
 
-- [ ] **T7.** Definir tabla `jobs` (id, user_id, organization_id, printer_id, file_name, file_path, status, manual_rank, failure_reason, timestamps).
-  RF: RF-2, RF-7, RF-10, RF-11, RF-13
-  Hecho cuando: `pnpm db:push` crea la tabla con las FKs a `user_profiles`, `organizations` y `printers`.
+El orden de la cola no se persiste como columna: se calcula en cada consulta a partir de `organization.priority_tier`, `jobs.created_at` (desempate FIFO) y `jobs.manual_rank` (si un admin lo fijó, manda sobre lo demás).
 
-- [ ] **T8.** Definir tabla `notifications` (id, user_id, job_id, type, message, read_at, created_at).
-  RF: RF-7, RF-10
-  Hecho cuando: `pnpm db:push` crea la tabla con las FKs correspondientes.
+## Decisiones (con alternativa descartada)
 
-- [ ] **T9.** Sembrar (`seed`) las tres organizaciones conocidas (FrED-Factory tier 1, RoBorregos y VantTec tier 2).
-  RF: RF-4, RF-9
-  Hecho cuando: la tabla `organizations` tiene esas tres filas tras correr el script de seed.
+1. **El estado del fleet y la asignación automática viven en un servicio Node local (extensión de `proxy.cjs`), no en el navegador.**
+   Descartada: mantener el cliente MQTT solo en el navegador, como en el repo anterior. Se descarta porque la cola necesita asignar trabajos aunque nadie tenga una pestaña abierta; con MQTT solo en el navegador, la automatización se detendría al cerrar la pestaña.
 
-## Fase 2 — Auth
+2. **`organizations` es una tabla, no un enum fijo en código.**
+   Descartada: lista fija de 3 organizaciones (como el repo anterior). Se descarta porque RF-9 pide una lista abierta, y un enum obligaría a tocar código cada vez que se sume un grupo nuevo.
 
-- [ ] **T10.** Adaptar `AuthScreen.tsx` del repo anterior: login/registro con Supabase Auth.
-  RF: RF-9
-  Hecho cuando: un usuario nuevo puede registrarse e iniciar sesión.
+3. **El orden de la cola se calcula dinámicamente en cada consulta.**
+   Descartada: persistir un campo `queue_position` que se reescribe en cada cambio. Se descarta por el riesgo de inconsistencia si dos trabajos se insertan o reordenan casi al mismo tiempo; calcularlo al vuelo evita ese problema de concurrencia.
 
-- [ ] **T11.** Agregar selector de organización en el registro, con opción de escribir una organización nueva (lista abierta).
-  RF: RF-9
-  Hecho cuando: registrar un usuario con una organización no existente la crea automáticamente con `priority_tier` por defecto (2).
+4. **Se mantiene Next.js con Pages Router**, igual que el repo de referencia.
+   Descartada: migrar a App Router. Se descarta para esta iteración porque no aporta valor al alcance actual y permite reutilizar componentes existentes (Sidebar, Topbar, AddJobModal) casi sin cambios.
 
-- [ ] **T11b.** Habilitar Row Level Security (RLS) en Supabase para `organizations` y `user_profiles`, con políticas mínimas: cualquier usuario autenticado puede leer `organizations`, pero solo insertar filas nuevas (no editar/borrar las existentes); cada usuario puede leer y actualizar su propia fila de `user_profiles`, nunca la de otro, y nunca su propio campo `role`.
-  RF: RF-9
-  Hecho cuando: con RLS activo, una llamada directa a la API de Supabase (no desde la UI) intentando leer el perfil de otro usuario o cambiar el propio `role` es rechazada.
+5. **Notificaciones in-app únicamente** (tabla `notifications` + Supabase Realtime o polling corto en el cliente).
+   Descartada: envío por correo. Se descarta porque no hay proveedor de email configurado y el NFR de la spec ya limita esta iteración a in-app.
 
-- [ ] **T11c.** Envolver el script `db:push` (en `package.json`) para que, después de correr `drizzle-kit push`, siempre reaplique automáticamente las políticas RLS de `db/sql/001_auth_triggers.sql` (y cualquier archivo `db/sql/*.sql` que se agregue después). Nadie debe depender de acordarse de este paso a mano.
-  RF: RF-9
-  Hecho cuando: correr `pnpm db:push` una sola vez deja las políticas de `organizations` y `user_profiles` intactas y verificables, sin ningún paso manual adicional.
+6. **Dos variables de conexión a la base de datos: `DATABASE_URL` (transaction pooler, puerto 6543) para el runtime de la app, y `DIRECT_URL` (session pooler, puerto 5432) para migraciones de `drizzle-kit`.**
+   Descartada: usar una sola URL (el pooler de transacciones) para todo. Se descarta porque `drizzle-kit push` se cuelga indefinidamente contra el transaction pooler; ese modo no soporta la introspección que necesita para migraciones, aunque sí funciona bien para las queries normales de la app.
 
-- [ ] **T12.** Asignar `role = 'member'` por defecto al registrarse; documentar cómo promover un usuario a `'admin'` manualmente (sin UI todavía).
-  RF: RF-13
-  Hecho cuando: existe al menos un usuario de prueba con `role = 'admin'` en la base de datos.
+7. **La creación de `user_profiles` (y de la organización, si es nueva) al registrarse corre en un trigger de Postgres sobre `auth.users` (`SECURITY DEFINER`), no desde el cliente.**
+   Descartada: insertar esas filas directo desde `AuthScreen.tsx` justo después de `signUp()`. Se descarta porque con confirmación de correo activada el cliente no tiene una sesión `authenticated` en ese momento, así que RLS rechazaría el insert; el trigger corre a nivel de base de datos y no depende de si hay sesión o no. El nombre de la organización viaja como metadata del propio `signUp()`.
 
-- [ ] **T13.** Middleware/guard: bloquear todas las páginas del dashboard a usuarios no autenticados.
-  RF: RF-9
-  Hecho cuando: acceder a `/` sin sesión redirige a la pantalla de login.
+8. **El dashboard consume el estado del fleet por HTTP polling a `GET /printers` del gateway, no con `mqtt.js` en el navegador vía el bridge WS↔TLS.**
+   Descartada: el diseño original de la constitución (punto 3), con `mqtt.js` corriendo en el navegador. Se descarta porque el gateway ya centralizó todo el estado desde T14b (una conexión MQTT por impresora, expuesta en un único `GET /printers`), y el navegador no necesita hablar MQTT directo para leer eso. El bridge WS↔TLS se mantiene en el código como referencia, pero queda sin uso activo por ahora; se retoma solo si el polling resulta insuficiente (latencia, carga).
 
-## Fase 3 — Fleet y MQTT Gateway
+## Estrategia de tests
 
-- [ ] **T14.** Extender `proxy.cjs` a un servicio Node persistente que, además de hacer de bridge WS↔TLS, mantiene en memoria el estado de cada impresora conectada.
-  RF: RF-1, RF-5, RF-6
-  Hecho cuando: el servicio corre de forma independiente y expone el estado de al menos una impresora simulada.
+| Test | Qué cubre |
+|---|---|
+| Unit: cálculo de orden de cola (tiers + FIFO + `manual_rank`) | RF-4, RF-13 |
+| Unit: validación de archivo (extensión, tamaño) | RF-3 |
+| Integración (MQTT mock): asignación automática al liberarse una impresora | RF-5 |
+| Integración (MQTT mock): salto a la siguiente impresora libre si la asignada no responde | RF-6 |
+| Integración (MQTT mock): impresora se desconecta a mitad de impresión → job fallido + notificación | RF-7 |
+| Integración: cola sin impresoras libres → job en "waiting" + notificación | RF-10 |
+| Integración: alta de una organización nueva y registro de un usuario en ella | RF-9 |
+| E2E manual/Playwright: pause/resume/stop contra impresora mock | RF-1, RF-8 |
+| E2E manual/Playwright: reordenamiento de un admin se refleja en la cola | RF-13 |
+| UI: apartado de "ver cola" muestra posición, organización y estado | RF-12 |
+| Persistencia: job guarda archivo, organización, impresora, estado y timestamps correctamente | RF-2, RF-11 |
 
-- [ ] **T15.** En el servicio, suscribirse a `device/{serial}/report` y actualizar `printers.status` / `last_seen_at` en la base de datos.
-  RF: RF-1
-  Hecho cuando: al simular un reporte MQTT, la fila de esa impresora en `printers` se actualiza.
+## Cobertura de RF por módulo
 
-- [ ] **T16.** Endpoint `/api/printers` para registrar una impresora nueva (serial, ip, access_code, name).
-  RF: RF-1
-  Hecho cuando: un POST válido crea la fila en `printers` y uno inválido devuelve error.
-
-- [ ] **T17.** Chequeo periódico: marcar una impresora como `offline` si no llega un reporte dentro de un umbral de tiempo.
-  RF: RF-6
-  Hecho cuando: al dejar de simular reportes de una impresora, su `status` cambia a `offline` tras el umbral.
-
-## Fase 4 — Jobs
-
-- [ ] **T18.** Endpoint de subida de archivo con validación de extensión (`.gcode`/`.3mf`) y tamaño máximo.
-  RF: RF-3
-  Hecho cuando: un archivo válido se acepta y uno con extensión o tamaño incorrecto se rechaza con mensaje claro.
-
-- [ ] **T19.** Al subir un archivo válido, crear la fila en `jobs` con `status = 'queued'` y la `organization_id` del usuario.
-  RF: RF-2
-  Hecho cuando: tras subir un archivo, aparece una fila nueva en `jobs` con los datos correctos.
-
-- [ ] **T20.** Guardar el archivo subido en almacenamiento (carpeta local o Supabase Storage) y enlazarlo en `jobs.file_path`.
-  RF: RF-2, RF-11
-  Hecho cuando: el archivo subido es recuperable a partir de `file_path`.
-
-## Fase 5 — Queue Engine
-
-- [ ] **T21.** Función pura que, dado un conjunto de jobs, calcula el orden de la cola (tier de organización → FIFO por `created_at` → `manual_rank` si existe).
-  RF: RF-4, RF-13
-  Hecho cuando: dado un set de jobs de prueba con tiers y timestamps distintos, la función devuelve el orden esperado.
-
-- [ ] **T22.** Al liberarse una impresora (status pasa a `idle`), tomar el primer job de la cola calculada y asignarlo (`printer_id`, `status = 'assigned'`).
-  RF: RF-5
-  Hecho cuando: al simular que una impresora queda libre con jobs en cola, el primero se asigna automáticamente.
-
-- [ ] **T23.** Si la impresora asignada está `offline` al momento de enviar el trabajo, reintentar con la siguiente impresora libre del fleet.
-  RF: RF-6
-  Hecho cuando: simulando una impresora offline al momento de asignar, el job termina asignado a otra impresora libre.
-
-- [ ] **T24.** Si una impresora se desconecta mientras un job tiene `status = 'printing'`, marcar el job como `failed` y crear una notificación.
-  RF: RF-7
-  Hecho cuando: al simular la desconexión de una impresora con un job en curso, el job pasa a `failed` y aparece una fila en `notifications`.
-
-- [ ] **T25.** Si no hay ninguna impresora libre al encolar un job, dejarlo en `status = 'waiting'` y crear una notificación de "en lista de espera".
-  RF: RF-10
-  Hecho cuando: con todas las impresoras ocupadas/offline, un job nuevo queda en `waiting` y genera una notificación.
-
-- [ ] **T26.** Endpoint para que un admin fije `manual_rank` en uno o más jobs, y que el cálculo de la cola lo respete.
-  RF: RF-13
-  Hecho cuando: un usuario con `role = 'admin'` puede cambiar el orden de dos jobs y la cola calculada refleja el cambio; un usuario `member` recibe error al intentarlo.
-
-## Fase 6 — Control de impresión
-
-- [ ] **T27.** Endpoints/comandos para pausar, reanudar y detener un job en curso, enviados vía MQTT a la impresora asignada.
-  RF: RF-8
-  Hecho cuando: cada comando, al ejecutarse contra una impresora simulada, dispara el mensaje MQTT correspondiente en `device/{serial}/request`.
-
-## Fase 7 — Notificaciones
-
-- [ ] **T28.** Endpoint/lectura de notificaciones por usuario (listar, marcar como leídas).
-  RF: RF-7, RF-10
-  Hecho cuando: un usuario puede obtener sus notificaciones no leídas vía API.
-
-- [ ] **T29.** Suscripción en el cliente (Supabase Realtime o polling corto) para mostrar notificaciones nuevas sin recargar la página.
-  RF: RF-7, RF-10
-  Hecho cuando: al crear una notificación en la base de datos, aparece en la interfaz sin recargar.
-
-## Fase 8 — Dashboard UI
-
-- [ ] **T30.** Adaptar `Topbar`, `Sidebar`, `MetricsRow` y `PrinterDetail` del repo anterior para mostrar el estado en tiempo real del fleet.
-  RF: RF-1
-  Hecho cuando: la interfaz muestra temperatura, progreso y estado de al menos una impresora simulada, actualizándose sola.
-
-- [ ] **T31.** Adaptar `AddJobModal` para subir un archivo con feedback visual de validación (aceptado/rechazado).
-  RF: RF-3
-  Hecho cuando: subir un archivo inválido muestra el mensaje de error en la UI, sin recargar la página.
-
-- [ ] **T32.** Nueva vista "Cola" que lista los jobs actuales con su posición, organización y estado.
-  RF: RF-12
-  Hecho cuando: cualquier usuario autenticado puede ver la lista completa de jobs en cola, en el orden correcto.
-
-- [ ] **T33.** Controles de reordenamiento manual visibles solo para `role = 'admin'` en la vista de cola.
-  RF: RF-13
-  Hecho cuando: un admin puede mover un job hacia arriba/abajo en la UI y el cambio persiste al recargar.
-
-- [ ] **T34.** Componente de notificaciones (badge + lista desplegable) conectado a T29.
-  RF: RF-7, RF-10
-  Hecho cuando: una notificación nueva incrementa el badge y se puede marcar como leída desde la UI.
-
-- [ ] **T35.** Botones de pausar/reanudar/detener en `PrinterDetail`, conectados a los endpoints de T27.
-  RF: RF-1, RF-8
-  Hecho cuando: presionar cada botón contra una impresora simulada dispara el comando correcto y la UI refleja el nuevo estado.
-
-## Fase 9 — Tests formales
-
-- [ ] **T36.** Tests unitarios de la función de orden de cola (T21): tiers, desempate FIFO y `manual_rank`.
-  RF: RF-4, RF-13
-  Hecho cuando: la suite de tests corre en verde para al menos 3 escenarios distintos.
-
-- [ ] **T37.** Tests unitarios de validación de archivo (T18): extensión y tamaño.
-  RF: RF-3
-  Hecho cuando: la suite cubre casos válidos e inválidos y corre en verde.
-
-- [ ] **T38.** Tests de integración con MQTT mock: asignación automática (T22) y fallback a otra impresora (T23).
-  RF: RF-5, RF-6
-  Hecho cuando: ambos escenarios simulados pasan en verde.
-
-- [ ] **T39.** Test de integración: desconexión a mitad de impresión (T24) y cola sin impresoras libres (T25).
-  RF: RF-7, RF-10
-  Hecho cuando: ambos escenarios simulados pasan en verde, incluyendo la notificación generada.
-
-- [ ] **T40.** Test de integración: alta de una organización nueva al registrarse (T11).
-  RF: RF-9
-  Hecho cuando: el test crea una organización nueva vía registro y verifica su `priority_tier` por defecto.
-
-- [ ] **T41.** Test E2E (manual o Playwright) del flujo completo: login, subir job, ver estado en tiempo real, pausar/reanudar/detener.
-  RF: RF-1, RF-8
-  Hecho cuando: el flujo se completa sin errores contra al menos una impresora real o simulada.
-
-- [ ] **T42.** Test E2E (manual o Playwright) del reordenamiento de admin reflejado en la vista de cola (T33).
-  RF: RF-13
-  Hecho cuando: el nuevo orden fijado por el admin se ve igual en la UI y en la base de datos.
-
-## Decisiones
-
-Decisiones de implementación (el *cómo*; el alcance sigue viviendo en la spec).
-
-- **T20 — dónde se guarda el archivo subido: Supabase Storage, bucket privado `print-files` (`public = false`).**
-  El endpoint de subida (`pages/api/jobs/upload.ts`) escribe los bytes con la service-role key —cliente solo-servidor en `lib/supabaseAdmin.ts`— y guarda `"<bucket>/<key>"` en `jobs.file_path`, reemplazando el sentinel `pending://T20-not-implemented` que dejaba T19. El archivo se recupera con `supabaseAdmin().storage.from(bucket).download(key)`. El bucket lo crea `db/sql/002_storage_bucket.sql` (se reaplica solo con `pnpm db:push`).
-  - Alternativa descartada: guardar el archivo en el disco local del servidor (p. ej. `./uploads/`). Descartada porque no sobrevive a redeploys (el filesystem del contenedor es efímero) ni escala a múltiples instancias (cada réplica solo vería sus propios archivos).
-  - El límite de tamaño se aplica sobre los bytes reales mientras se leen (`readCappedBody`), sin confiar en el `Content-Length` declarado (ver nota de T18): si el stream supera `MAX_UPLOAD_BYTES` se corta la subida, no se escribe en Storage y no se crea ninguna fila en `jobs`.
-- **T22 — el gateway corre con `tsx` (`pnpm gateway` = `tsx proxy.cjs`) e importa `lib/queueOrder.ts` directo.**
-  La asignación automática vive en el mismo proceso que habla MQTT (`proxy.cjs`, ver AGENTS.md): cuando `persistReport` marca una impresora como `idle`, consulta los jobs `queued`, ordena con `calculateQueueOrder` y asigna el primero (`printer_id`, `status = 'assigned'`). `proxy.cjs` sigue siendo CommonJS; con `tsx` como runtime puede hacer `require("./lib/queueOrder.ts")` sin duplicar la función de orden ni compilarla aparte. (Node 22.23 también resuelve ese `require` de un `.ts` por sí solo —así lo carga vitest en `proxy.test.mts`—, pero el arranque documentado es `tsx` para no depender de que el type stripping nativo se mantenga estable.) `sweepOffline` no participa: solo pasa impresoras a `offline`; la vuelta a `idle` siempre llega por un reporte, es decir, por `persistReport`.
-  - Alternativa descartada: que el gateway notifique a una API route de Next.js (`pages/api/...`) y la asignación se haga ahí. Descartada porque contradice la decisión de que la asignación viva en el mismo servicio del gateway: metería un salto HTTP y una segunda fuente de verdad sobre el estado del fleet, y obligaría al gateway a conocer la URL/credenciales del dashboard.
-  - La asignación se evalúa en cada reporte `idle`, no solo en la transición: es idempotente (una impresora con un job `assigned`/`printing` no recibe otro, y el `UPDATE` re-verifica `status = 'queued'`, así que dos impresoras que se liberan a la vez no toman el mismo job). Eso también cubre el caso de un job encolado mientras la impresora ya estaba libre, sin lógica extra en el endpoint de subida.
-- **T23 — el envío del job a la impresora vive en el gateway (`sendJob` en `proxy.cjs`), portado de `bambulabs_api` a Node; el fallback se decide por el resultado real del envío, no por `printers.status`.**
-  En el repo de referencia el envío lo hacía `src/scripts/add_job.py` con el paquete Python `bambulabs_api` (`Printer.upload_file` + `Printer.start_print`). Aquí se porta el mismo flujo a Node dentro de `assignNextJob`: descarga el archivo de Storage (`jobs.file_path`, T20) con `lib/supabaseAdmin.ts` (el gateway necesita `SUPABASE_SERVICE_ROLE_KEY` en `.env`), lo sube por FTPS implícito (puerto 990, usuario `bblp`, contraseña = access code, `PROT P`, `STOR <file_name>`) y publica el comando `project_file` en `device/<serial>/request` sobre el cliente MQTT que el gateway ya mantiene por impresora (`watched`), con el mismo payload que `start_print(filename, plate_number=1)`. Si el envío tiene éxito el job pasa a `printing` (`started_at = now()`); si falla por lo que sea (FTP no responde, login rechazado, cliente MQTT caído) se revierte la asignación (`printer_id = null`, `status = 'queued'`) y se reintenta con la siguiente impresora libre del fleet (`idle` en la base de datos y sin job `assigned`/`printing`), excluyendo las ya probadas. Si ninguna responde el job se queda en `queued` sin impresora y lo vuelve a intentar el siguiente reporte `idle`.
-  - Alternativa descartada: mantener el script Python y llamarlo desde Node como hacía el repo de referencia. Descartada porque añade un runtime (Python + `bambulabs_api`) que hay que instalar aparte y no da nada que no cubran `basic-ftp` + el cliente `mqtt` que el gateway ya tiene abierto.
-  - Alternativa descartada: decidir el fallback mirando `printers.status = 'offline'` antes de enviar. Descartada porque una impresora puede figurar `idle` (su último reporte tiene menos de 45 s, T17) y aun así no responder; solo el envío real lo detecta. La comprobación previa sigue valiendo como filtro de candidatas, no como garantía.
-  - Plato, tipo de cama y ranura de AMS van fijos (plate 1, `textured_plate`, AMS slot 0), igual que en `add_job.py`; pasarán a campos del job cuando el formulario de subida los pida.
-
-## Dependencias
-
-Justificación de cada dependencia añadida fuera del scaffold inicial (constitución, regla 10).
-
-- **`ws`** (T14) — servidor WebSocket del gateway (`proxy.cjs`). Node no trae servidor WS (solo cliente, desde v22), y el bridge WS↔TLS es la única forma de que el navegador hable MQTT con la impresora. Misma librería que usaba `proxy.cjs` en `Automatize-3D-printers`.
-- **`mqtt`** (T14) — cliente MQTT del gateway contra la impresora (`mqtts://<ip>:8883`). El servicio necesita su propia sesión MQTT para mantener el estado del fleet en memoria aunque no haya ningún navegador abierto; implementar MQTT 3.1.1 a mano no se justifica. Ya era dependencia del repo de referencia.
-- **`basic-ftp`** (T23) — cliente FTP/FTPS para Node en el gateway (`sendJob` en `proxy.cjs`). Node no trae cliente FTP y la impresora solo acepta archivos por FTPS implícito en el puerto 990 (lo que `bambulabs_api` hace con `ftplib` en Python). `basic-ftp` soporta TLS implícito (`secure: "implicit"`) y reutiliza la sesión TLS en la conexión de datos, que es lo que el firmware Bambu exige; sin dependencias transitivas.
-- **`tsx`** (T22, devDependency) — runtime del gateway (`pnpm gateway`) y del seed (`db:seed`, que ya lo usaba vía hoisting de `drizzle-kit` sin declararlo). Permite que `proxy.cjs` importe `lib/queueOrder.ts` tal cual, compartiendo la función de orden con el dashboard sin un paso de build ni una copia en JS.
+- **Auth**: RF-9
+- **Organizations**: RF-9
+- **Fleet**: RF-1, RF-5, RF-6
+- **MQTT Gateway**: RF-1, RF-5, RF-6, RF-7, RF-8
+- **Queue Engine**: RF-4, RF-5, RF-6, RF-10, RF-13
+- **Jobs**: RF-2, RF-3, RF-7, RF-10, RF-11
+- **Notifications**: RF-7, RF-10
+- **Dashboard UI**: RF-1, RF-8, RF-12, RF-13
