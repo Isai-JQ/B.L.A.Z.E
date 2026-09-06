@@ -168,7 +168,7 @@ Derivado de `plan.md` (Plan Técnico 001). Cada tarea es de menos de 30 min e in
   RF: RF-12
   Hecho cuando: cualquier usuario autenticado puede ver la lista completa de jobs en cola, en el orden correcto.
 
-- [ ] **T33.** Controles de reordenamiento manual visibles solo para `role = 'admin'` en la vista de cola.
+- [x] **T33.** Controles de reordenamiento manual visibles solo para `role = 'admin'` en la vista de cola.
   RF: RF-13
   Hecho cuando: un admin puede mover un job hacia arriba/abajo en la UI y el cambio persiste al recargar.
 
