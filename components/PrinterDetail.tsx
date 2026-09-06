@@ -1,4 +1,12 @@
 import { fleetStatus, type PrinterState } from "@/hooks/useFleet";
+import type { ActiveJob } from "@/pages/api/jobs/active";
+
+type ControlAction = "pause" | "resume" | "stop";
+const CONTROLS: { action: ControlAction; label: string; cls: string }[] = [
+  { action: "pause", label: "Pausar", cls: "bg-amber-600 hover:bg-amber-500" },
+  { action: "resume", label: "Reanudar", cls: "bg-green-600 hover:bg-green-500" },
+  { action: "stop", label: "Detener", cls: "bg-red-600 hover:bg-red-500" },
+];
 
 const BADGE: Record<string, { label: string; cls: string }> = {
   printing: { label: "Imprimiendo", cls: "bg-blue-500/15 text-blue-300 border-blue-500/40" },
@@ -23,11 +31,24 @@ function Temp({ label, value, target }: { label: string; value?: number; target?
 // T30: adapted from the reference repo's PrinterDetail. One card per printer showing
 // the RF-1 telemetry: nozzle/bed/chamber temp, progress %, current layer, g-code
 // state and remaining time. Re-rendered on every useFleet poll.
-export default function PrinterDetail({ printer }: { printer: PrinterState }) {
+// T35: when the card has a job printing on it AND this user owns that job or is an
+// admin (canControl, decided server-side in /api/jobs/active per RF-8), show
+// pause/resume/stop buttons that POST to /api/jobs/:id/control (T27). Anyone else
+// sees no buttons at all, and a free printer has no job so shows none either.
+export default function PrinterDetail({
+  printer,
+  job,
+  onControl,
+}: {
+  printer: PrinterState;
+  job?: ActiveJob;
+  onControl?: (jobId: string, action: ControlAction) => void;
+}) {
   const status = fleetStatus(printer);
   const badge = BADGE[status];
   const pct = Math.max(0, Math.min(100, Math.round(printer.printPercent ?? 0)));
   const printing = status === "printing";
+  const showControls = Boolean(job?.canControl && onControl);
 
   return (
     <div className={`flex flex-col rounded-xl border border-gray-800 bg-gray-900 p-4 ${status === "offline" ? "opacity-60" : ""}`}>
@@ -77,6 +98,20 @@ export default function PrinterDetail({ printer }: { printer: PrinterState }) {
               : "Sin telemetría"}
         </span>
       </div>
+
+      {showControls && (
+        <div className="mt-4 flex gap-2">
+          {CONTROLS.map((c) => (
+            <button
+              key={c.action}
+              onClick={() => onControl!(job!.jobId, c.action)}
+              className={`flex-1 rounded px-2 py-1.5 text-xs font-bold text-white transition-colors ${c.cls}`}
+            >
+              {c.label}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

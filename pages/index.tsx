@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { useFleet } from "@/hooks/useFleet";
+import { useActiveJobs } from "@/hooks/useActiveJobs";
 import Sidebar from "@/components/Sidebar";
 import Topbar from "@/components/Topbar";
 import MetricsRow from "@/components/MetricsRow";
@@ -12,6 +13,7 @@ import AddJobModal from "@/components/AddJobModal";
 // MQTT telemetry without a reload (RF-1).
 export default function Home() {
   const { printers, error, updatedAt } = useFleet();
+  const { activeJobs, control } = useActiveJobs();
   const [email, setEmail] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [flash, setFlash] = useState<string | null>(null);
@@ -49,7 +51,12 @@ export default function Home() {
           ) : (
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
               {printers.map((p) => (
-                <PrinterDetail key={p.serial} printer={p} />
+                <PrinterDetail
+                  key={p.serial}
+                  printer={p}
+                  job={activeJobs[p.serial]}
+                  onControl={control}
+                />
               ))}
             </div>
           )}
