@@ -142,7 +142,7 @@ Derivado de `plan.md` (Plan Técnico 001). Cada tarea es de menos de 30 min e in
 
 ## Fase 7 — Notificaciones
 
-- [ ] **T28.** Endpoint/lectura de notificaciones por usuario (listar, marcar como leídas).
+- [x] **T28.** Endpoint/lectura de notificaciones por usuario (listar, marcar como leídas).
   RF: RF-7, RF-10
   Hecho cuando: un usuario puede obtener sus notificaciones no leídas vía API.
 
