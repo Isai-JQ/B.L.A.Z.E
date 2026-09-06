@@ -118,7 +118,7 @@ Derivado de `plan.md` (Plan Técnico 001). Cada tarea es de menos de 30 min e in
   RF: RF-5
   Hecho cuando: al simular que una impresora queda libre con jobs en cola, el primero se asigna automáticamente.
 
-- [ ] **T23.** Si la impresora asignada está `offline` al momento de enviar el trabajo, reintentar con la siguiente impresora libre del fleet.
+- [x] **T23.** Si la impresora asignada está `offline` al momento de enviar el trabajo, reintentar con la siguiente impresora libre del fleet.
   RF: RF-6
   Hecho cuando: simulando una impresora offline al momento de asignar, el job termina asignado a otra impresora libre.
 
