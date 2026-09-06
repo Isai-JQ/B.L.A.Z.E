@@ -182,23 +182,23 @@ Derivado de `plan.md` (Plan Técnico 001). Cada tarea es de menos de 30 min e in
 
 ## Fase 9 — Tests formales
 
-- [ ] **T36.** Tests unitarios de la función de orden de cola (T21): tiers, desempate FIFO y `manual_rank`.
+- [x] **T36.** Tests unitarios de la función de orden de cola (T21): tiers, desempate FIFO y `manual_rank`.
   RF: RF-4, RF-13
   Hecho cuando: la suite de tests corre en verde para al menos 3 escenarios distintos.
 
-- [ ] **T37.** Tests unitarios de validación de archivo (T18): extensión y tamaño.
+- [x] **T37.** Tests unitarios de validación de archivo (T18): extensión y tamaño.
   RF: RF-3
   Hecho cuando: la suite cubre casos válidos e inválidos y corre en verde.
 
-- [ ] **T38.** Tests de integración con MQTT mock: asignación automática (T22) y fallback a otra impresora (T23).
+- [x] **T38.** Tests de integración con MQTT mock: asignación automática (T22) y fallback a otra impresora (T23).
   RF: RF-5, RF-6
   Hecho cuando: ambos escenarios simulados pasan en verde.
 
-- [ ] **T39.** Test de integración: desconexión a mitad de impresión (T24) y cola sin impresoras libres (T25).
+- [x] **T39.** Test de integración: desconexión a mitad de impresión (T24) y cola sin impresoras libres (T25).
   RF: RF-7, RF-10
   Hecho cuando: ambos escenarios simulados pasan en verde, incluyendo la notificación generada.
 
-- [ ] **T40.** Test de integración: alta de una organización nueva al registrarse (T11).
+- [x] **T40.** Test de integración: alta de una organización nueva al registrarse (T11).
   RF: RF-9
   Hecho cuando: el test crea una organización nueva vía registro y verifica su `priority_tier` por defecto.
 
