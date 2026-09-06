@@ -19,6 +19,10 @@
 // drove from src/scripts/add_job.py. If sending fails for any reason the assignment is
 // reverted and the next free printer of the fleet is tried.
 //
+// T25: jobs the upload left as 'waiting' (no printer was free at enqueue time) sit in
+// the same queue as 'queued' ones; the two statuses only differ in what the user was
+// told, the engine treats them as one set.
+//
 // Usage: pnpm gateway   (= tsx proxy.cjs)
 //        WS_PORT=9001 (default) serves both the WebSocket bridge and GET /printers.
 
@@ -179,13 +183,14 @@ async function sendJob(printer, job) {
 
 // First job of the calculated queue that `printerId` could take, or undefined. Nothing is
 // offered to a printer that already holds a job 'assigned'/'printing' (idempotent, T22).
+// 'waiting' jobs (T25) compete on equal terms with 'queued' ones.
 // ponytail: one SELECT per idle report per printer; if that ever shows on the DB, gate
 // it on the idle transition + an enqueue-time trigger instead.
 async function nextQueuedJob(db, printerId) {
   const rows = await db.execute(
     sql`select j.id, j.manual_rank, j.created_at, o.priority_tier
         from jobs j join organizations o on o.id = j.organization_id
-        where j.status = 'queued'
+        where j.status in ('queued', 'waiting')
           and not exists (select 1 from jobs b
                           where b.printer_id = ${printerId}
                             and b.status in ('assigned', 'printing'))`,
@@ -214,7 +219,7 @@ async function nextFreePrinter(db, exclude) {
 
 // Assigns the first job of the calculated queue to a free printer (T22) and sends it
 // (T23). Returns the job id, or null if nothing was assigned. The UPDATE re-checks
-// status = 'queued' so two printers freeing up at once cannot both take the same job
+// status in ('queued', 'waiting') so two printers freeing up at once cannot both take the same job
 // (the loser just retries on its next idle report, which is also what picks up a job
 // queued while it sat idle). If sending fails — the printer's DB status said 'idle' but
 // it does not answer, FTP rejects the file, MQTT is down — the assignment is reverted
@@ -230,7 +235,7 @@ async function assignNextJob(db, printerId, send = module.exports.sendJob) {
     tried.push(printer);
     const [job] = await db.execute(
       sql`update jobs set printer_id = ${printer}, status = 'assigned'
-          where id = ${next.id} and status = 'queued' returning id, file_name, file_path`,
+          where id = ${next.id} and status in ('queued', 'waiting') returning id, file_name, file_path`,
     );
     if (!job) return null; // another printer claimed it first
     console.log(`→ Job ${job.id} assigned to printer ${printer}`);
