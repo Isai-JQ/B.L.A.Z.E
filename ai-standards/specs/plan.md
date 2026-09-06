@@ -90,6 +90,9 @@ El orden de la cola no se persiste como columna: se calcula en cada consulta a p
 8. **El dashboard consume el estado del fleet por HTTP polling a `GET /printers` del gateway, no con `mqtt.js` en el navegador vía el bridge WS↔TLS.**
    Descartada: el diseño original de la constitución (punto 3), con `mqtt.js` corriendo en el navegador. Se descarta porque el gateway ya centralizó todo el estado desde T14b (una conexión MQTT por impresora, expuesta en un único `GET /printers`), y el navegador no necesita hablar MQTT directo para leer eso. El bridge WS↔TLS se mantiene en el código como referencia, pero queda sin uso activo por ahora; se retoma solo si el polling resulta insuficiente (latencia, carga).
 
+9. **El test E2E del flujo completo (T41) usa `playwright` (solo la librería `chromium`, no el runner `@playwright/test`) sobre el mismo vitest que el resto de la suite.**
+   Nueva dependencia: `playwright` (devDependency). Se justifica porque T41 pide explícitamente un E2E "manual o Playwright" del flujo real de navegador (login con sesión, subir archivo, ver telemetría en vivo, botones de control) y no hay forma de cubrir eso con jsdom. Descartada: añadir `@playwright/test` con su propio runner y config; se descarta para no meter un segundo test runner — se reaprovecha vitest y el patrón de `fakeConnect` de `proxy.test.mts`. El spec vive en `e2e.*.test.mts`, corre con `pnpm test:e2e` (`vitest.e2e.config.mts`) y queda excluido de `pnpm test` porque levanta `next dev` + Chromium y es lento/sensible a timing.
+
 ## Estrategia de tests
 
 | Test | Qué cubre |
