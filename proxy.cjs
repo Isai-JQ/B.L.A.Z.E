@@ -85,6 +85,27 @@ function loadEnv() {
   }
 }
 
+// T30b: flattens `print.ams.ams[].tray[]` into the filament actually loaded per slot —
+// material and Bambu's RRGGBBAA colour hex. Returns undefined for a delta report with no
+// `ams` block, so the last known trays survive (same rule as FIELDS above).
+// ponytail: `active` compares the per-unit tray id against the global `tray_now`; correct
+// for the single-AMS P1S, revisit if a multi-AMS printer is ever registered.
+function readAms(ams) {
+  if (!ams || !Array.isArray(ams.ams)) return undefined;
+  const trays = [];
+  for (const unit of ams.ams) {
+    for (const tray of unit.tray ?? []) {
+      trays.push({
+        id: `${unit.id ?? 0}-${tray.id}`,
+        material: tray.tray_type || null,
+        color: tray.tray_color ? `#${String(tray.tray_color).slice(0, 6)}` : null,
+        active: String(tray.id) === String(ams.tray_now),
+      });
+    }
+  }
+  return trays;
+}
+
 // Merges one `device/{serial}/report` message into the in-memory state.
 // Returns the updated state, or null if the message is not a usable print report.
 function handleReport(topic, message) {
@@ -103,6 +124,8 @@ function handleReport(topic, message) {
   for (const [from, to] of Object.entries(FIELDS)) {
     if (print[from] !== undefined) state[to] = print[from];
   }
+  const ams = readAms(print.ams);
+  if (ams) state.ams = ams;
   state.lastReportAt = new Date().toISOString();
   printers.set(serial, state);
   return state;

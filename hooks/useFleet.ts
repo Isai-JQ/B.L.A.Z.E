@@ -18,6 +18,8 @@ export type PrinterState = {
   remainingTime?: number;
   gcodeFile?: string;
   lastReportAt?: string;
+  // T30b: filament loaded in the AMS, one entry per slot (proxy.cjs readAms).
+  ams?: { id: string; material: string | null; color: string | null; active: boolean }[];
 };
 
 export type FleetStatus = "printing" | "free" | "offline";

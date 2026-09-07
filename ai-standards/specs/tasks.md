@@ -160,7 +160,7 @@ Derivado de `plan.md` (Plan Técnico 001). Cada tarea es de menos de 30 min e in
   RF: RF-1
   Hecho cuando: la interfaz muestra temperatura, progreso y estado de al menos una impresora simulada, actualizándose sola.
 
-- [ ] **T30b.** Agregar el filamento del AMS (RF-1, quedó pendiente) como telemetría real: capturar el estado del AMS en el merge de reportes MQTT del gateway y exponerlo en `GET /printers`; mostrarlo en la tarjeta de `PrinterDetail`.
+- [x] **T30b.** Agregar el filamento del AMS (RF-1, quedó pendiente) como telemetría real: capturar el estado del AMS en el merge de reportes MQTT del gateway y exponerlo en `GET /printers`; mostrarlo en la tarjeta de `PrinterDetail`.
   RF: RF-1
   Hecho cuando: un reporte simulado con datos de AMS se refleja en `GET /printers` y se muestra en el dashboard sin recargar.
 

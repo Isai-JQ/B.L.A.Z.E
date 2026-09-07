@@ -73,6 +73,33 @@ it("keeps simulated printer state in memory and exposes it over HTTP", async () 
   expect(printers.size).toBe(1);
 });
 
+it("T30b: captures AMS filament trays from the report and serves them at GET /printers", async () => {
+  report(SERIAL, {
+    ams: {
+      tray_now: "1",
+      ams: [
+        {
+          id: "0",
+          tray: [
+            { id: "0", tray_type: "PLA", tray_color: "FF6600FF" },
+            { id: "1", tray_type: "PETG", tray_color: "1E90FFFF" },
+          ],
+        },
+      ],
+    },
+  });
+
+  const [printer] = await getPrinters();
+  expect(printer.ams).toEqual([
+    { id: "0-0", material: "PLA", color: "#FF6600", active: false },
+    { id: "0-1", material: "PETG", color: "#1E90FF", active: true },
+  ]);
+
+  // A later delta with no `ams` block keeps the trays.
+  report(SERIAL, { mc_percent: 44 });
+  expect((await getPrinters())[0].ams).toHaveLength(2);
+});
+
 // ---------------------------------------------------------------------------
 // T14b: fleet is read from the `printers` table, one MQTT client per row, and
 // GET /printers serves the combined state. Uses the live Supabase project from
