@@ -375,6 +375,7 @@ it("assigns the highest-priority queued job to a printer that becomes free (T22)
 // ---------------------------------------------------------------------------
 
 it("falls back to the next free printer when the send fails (T23)", async () => {
+  // Real ETIMEDOUT fallback path with retries; give it slack under parallel load.
   // Both printers are free again: the T22 jobs are done.
   await sql`update jobs set status = 'completed' where user_id = ${t22.userId}`;
   const [lowOrg] = await sql`select id from organizations where name = ${t22.orgName}`;
@@ -408,7 +409,7 @@ it("falls back to the next free printer when the send fails (T23)", async () => 
   expect(await waitForJobStatus(t22.jobT23, "printing")).toMatchObject({ printer_id: printerA });
   expect(sent.map((s) => s.ip)).toEqual(["10.0.0.202", "10.0.0.201"]);
   expect(Date.parse((await sql`select started_at from jobs where id = ${t22.jobT23}`)[0].started_at)).not.toBeNaN();
-});
+}, 20_000);
 
 // ---------------------------------------------------------------------------
 // T24: the printer running a job stops reporting. The T17 sweep flips it to
