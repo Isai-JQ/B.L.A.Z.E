@@ -48,7 +48,7 @@ Derivado de `plan.md` (Plan Técnico 001). Cada tarea es de menos de 30 min e in
   RF: RF-9
   Hecho cuando: un usuario nuevo puede registrarse e iniciar sesión.
 
-- [x] **T10b.** Restringir el registro a correos `@tec.mx`: validación en el cliente (`AuthScreen.tsx`, feedback inmediato) y en el trigger `handle_new_user()` de T11b (`RAISE EXCEPTION` si el dominio no es `@tec.mx`, para que no se pueda evadir llamando directo a la API de Supabase).
+- [ ] **T10b.** Restringir el registro a correos `@tec.mx`: validación en el cliente (`AuthScreen.tsx`, feedback inmediato) y en el trigger `handle_new_user()` de T11b (`RAISE EXCEPTION` si el dominio no es `@tec.mx`, para que no se pueda evadir llamando directo a la API de Supabase).
   RF: RF-14
   Hecho cuando: registrarse con un correo que no sea `@tec.mx` es rechazado tanto en la UI como llamando directo a `supabase.auth.signUp()`.
 
@@ -156,27 +156,31 @@ Derivado de `plan.md` (Plan Técnico 001). Cada tarea es de menos de 30 min e in
 
 ## Fase 8 — Dashboard UI
 
-- [x] **T30.** Adaptar `Topbar`, `Sidebar`, `MetricsRow` y `PrinterDetail` del repo anterior para mostrar el estado en tiempo real del fleet.
+- [ ] **T30.** Adaptar `Topbar`, `Sidebar`, `MetricsRow` y `PrinterDetail` del repo anterior para mostrar el estado en tiempo real del fleet.
   RF: RF-1
   Hecho cuando: la interfaz muestra temperatura, progreso y estado de al menos una impresora simulada, actualizándose sola.
 
-- [x] **T31.** Adaptar `AddJobModal` para subir un archivo con feedback visual de validación (aceptado/rechazado).
+- [ ] **T30b.** Agregar el filamento del AMS (RF-1, quedó pendiente) como telemetría real: capturar el estado del AMS en el merge de reportes MQTT del gateway y exponerlo en `GET /printers`; mostrarlo en la tarjeta de `PrinterDetail`.
+  RF: RF-1
+  Hecho cuando: un reporte simulado con datos de AMS se refleja en `GET /printers` y se muestra en el dashboard sin recargar.
+
+- [ ] **T31.** Adaptar `AddJobModal` para subir un archivo con feedback visual de validación (aceptado/rechazado).
   RF: RF-3
   Hecho cuando: subir un archivo inválido muestra el mensaje de error en la UI, sin recargar la página.
 
-- [x] **T32.** Nueva vista "Cola" que lista los jobs actuales con su posición, organización y estado.
+- [ ] **T32.** Nueva vista "Cola" que lista los jobs actuales con su posición, organización y estado.
   RF: RF-12
   Hecho cuando: cualquier usuario autenticado puede ver la lista completa de jobs en cola, en el orden correcto.
 
-- [x] **T33.** Controles de reordenamiento manual visibles solo para `role = 'admin'` en la vista de cola.
+- [ ] **T33.** Controles de reordenamiento manual visibles solo para `role = 'admin'` en la vista de cola.
   RF: RF-13
   Hecho cuando: un admin puede mover un job hacia arriba/abajo en la UI y el cambio persiste al recargar.
 
-- [x] **T34.** Componente de notificaciones (badge + lista desplegable) conectado a T29.
+- [ ] **T34.** Componente de notificaciones (badge + lista desplegable) conectado a T29.
   RF: RF-7, RF-10
   Hecho cuando: una notificación nueva incrementa el badge y se puede marcar como leída desde la UI.
 
-- [x] **T35.** Botones de pausar/reanudar/detener en `PrinterDetail`, conectados a los endpoints de T27.
+- [ ] **T35.** Botones de pausar/reanudar/detener en `PrinterDetail`, conectados a los endpoints de T27.
   RF: RF-1, RF-8
   Hecho cuando: presionar cada botón contra una impresora simulada dispara el comando correcto y la UI refleja el nuevo estado.
 
@@ -202,10 +206,10 @@ Derivado de `plan.md` (Plan Técnico 001). Cada tarea es de menos de 30 min e in
   RF: RF-9
   Hecho cuando: el test crea una organización nueva vía registro y verifica su `priority_tier` por defecto.
 
-- [x] **T41.** Test E2E (manual o Playwright) del flujo completo: login, subir job, ver estado en tiempo real, pausar/reanudar/detener.
+- [ ] **T41.** Test E2E (manual o Playwright) del flujo completo: login, subir job, ver estado en tiempo real, pausar/reanudar/detener.
   RF: RF-1, RF-8
   Hecho cuando: el flujo se completa sin errores contra al menos una impresora real o simulada.
 
-- [x] **T42.** Test E2E (manual o Playwright) del reordenamiento de admin reflejado en la vista de cola (T33).
+- [ ] **T42.** Test E2E (manual o Playwright) del reordenamiento de admin reflejado en la vista de cola (T33).
   RF: RF-13
   Hecho cuando: el nuevo orden fijado por el admin se ve igual en la UI y en la base de datos.
