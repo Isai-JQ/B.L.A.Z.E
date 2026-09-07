@@ -54,3 +54,22 @@ it("T35: a free printer with no job in progress shows no buttons", () => {
   render(<PrinterDetail printer={free} onControl={vi.fn()} />);
   for (const label of CONTROL_LABELS) expect(screen.queryByText(label)).toBeNull();
 });
+
+it("T30b: shows the AMS filament trays when the report carries them", () => {
+  const withAms: PrinterState = {
+    ...printing,
+    ams: [
+      { id: "0-0", material: "PLA", color: "#FF6600", active: false },
+      { id: "0-1", material: "PETG", color: "#1E90FF", active: true },
+    ],
+  };
+  render(<PrinterDetail printer={withAms} />);
+  expect(screen.getByText("AMS")).toBeInTheDocument();
+  expect(screen.getByText("PLA")).toBeInTheDocument();
+  expect(screen.getByText("PETG")).toBeInTheDocument();
+});
+
+it("T30b: renders nothing AMS-related when the printer has no trays", () => {
+  render(<PrinterDetail printer={printing} />);
+  expect(screen.queryByText("AMS")).toBeNull();
+});

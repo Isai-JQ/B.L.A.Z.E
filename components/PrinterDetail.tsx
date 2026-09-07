@@ -86,6 +86,28 @@ export default function PrinterDetail({
         <Temp label="Cámara" value={printer.chamberTemp} />
       </div>
 
+      {printer.ams && printer.ams.length > 0 && (
+        <div className="mt-3">
+          <div className="mb-1 text-[9px] uppercase tracking-wide text-gray-400">AMS</div>
+          <div className="flex flex-wrap gap-1.5">
+            {printer.ams.map((t) => (
+              <span
+                key={t.id}
+                className={`flex items-center gap-1 rounded border px-1.5 py-1 text-[10px] font-bold text-gray-200 ${
+                  t.active ? "border-blue-500/60 bg-blue-500/10" : "border-gray-800 bg-gray-950"
+                }`}
+              >
+                <span
+                  className="inline-block h-2.5 w-2.5 rounded-sm border border-gray-700"
+                  style={{ backgroundColor: t.color ?? "transparent" }}
+                />
+                {t.material ?? "—"}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="mt-3 flex items-center justify-between">
         <span className="rounded bg-gray-800 px-2 py-1 text-[10px] font-extrabold tracking-wide text-gray-400">
           {printer.gcodeState ?? "—"}
