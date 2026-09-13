@@ -285,10 +285,10 @@ async function assignNextJob(db, printerId, send = module.exports.sendJob) {
     if (!job) return null; // another printer claimed it first
     console.log(`→ Job ${job.id} assigned to printer ${printer}`);
 
-    const [row] = await db.execute(
-      sql`select id, ip_address, access_code, serial_number from printers where id = ${printer}`,
-    );
     try {
+      const [row] = await db.execute(
+        sql`select id, ip_address, access_code, serial_number from printers where id = ${printer}`,
+      );
       await send(row, job);
     } catch (e) {
       console.error(`→ Job ${job.id}: send to printer ${printer} failed (${e.message}), retrying elsewhere`);
@@ -397,10 +397,33 @@ async function syncPrinters(db, connect = mqtt.connect) {
   return rows;
 }
 
+// Security fix: GET /printers (full fleet telemetry) and POST /control (arbitrary
+// pause/resume/stop) used to trust anything that could reach the port. Every request
+// now needs this bearer token, checked here rather than relied on via network topology
+// — the Next.js API layer (pages/api/fleet.ts, pages/api/jobs/[id]/control.ts) is the
+// only intended caller and sends it on every request. No secret configured means no
+// request is authorized (fail closed), not "authless".
+function secretMatches(provided) {
+  const expected = process.env.GATEWAY_SHARED_SECRET;
+  return Boolean(expected) && provided === expected;
+}
+
+function isAuthorized(req) {
+  return secretMatches(req.headers.authorization?.replace(/^Bearer /i, ""));
+}
+
 // HTTP + WebSocket on one port: upgrades go to the bridge, plain GETs to the state API.
 // `printerIp` is an optional override for the WS bridge target (defaults to bridgeHost).
+// Binds to localhost only by default — GATEWAY_HOST overrides it for the rare case a
+// different host is explicitly required (e.g. the future Raspberry Pi phase).
 function start(port, printerIp) {
   const server = http.createServer((req, res) => {
+    if (!isAuthorized(req)) {
+      res.writeHead(401, { "content-type": "application/json" });
+      res.end(JSON.stringify({ error: "unauthorized" }));
+      return;
+    }
+
     // T27: the API route (pages/api/jobs/[id]/control.ts) checks permissions, then posts
     // { printerId, serial, action } here so the command goes out over the per-serial
     // client this process owns.
@@ -428,7 +451,17 @@ function start(port, printerIp) {
     res.end(JSON.stringify([...printers.values()]));
   });
 
-  const wss = new WebSocketServer({ server });
+  // `ws` intercepts the socket's 'upgrade' event before Node ever emits 'request', so
+  // isAuthorized() above never runs for a WebSocket handshake — this needs its own
+  // check. A browser's native WebSocket can't set an Authorization header, so the token
+  // travels in the URL query string instead: ws://host:port/?token=...
+  const wss = new WebSocketServer({
+    server,
+    verifyClient: ({ req }, callback) => {
+      const token = new URL(req.url, "http://localhost").searchParams.get("token");
+      callback(secretMatches(token), 401, "unauthorized");
+    },
+  });
   wss.on("connection", (ws) => {
     const host = printerIp || bridgeHost;
     if (!host) {
@@ -460,7 +493,7 @@ function start(port, printerIp) {
     });
   });
 
-  server.listen(port);
+  server.listen(port, process.env.GATEWAY_HOST || "127.0.0.1");
   return server;
 }
 
@@ -468,6 +501,10 @@ if (require.main === module) {
   loadEnv();
   if (!process.env.DATABASE_URL) {
     console.error("DATABASE_URL is not set");
+    process.exit(1);
+  }
+  if (!process.env.GATEWAY_SHARED_SECRET) {
+    console.error("GATEWAY_SHARED_SECRET is not set");
     process.exit(1);
   }
 

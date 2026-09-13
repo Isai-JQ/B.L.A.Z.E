@@ -23,7 +23,10 @@ const postToGateway: Dispatch = async (printerId, serial, action) => {
   const base = (process.env.NEXT_PUBLIC_WS_PROXY_URL ?? "ws://localhost:9001").replace(/^ws/, "http");
   const r = await fetch(`${base}/control`, {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: {
+      "content-type": "application/json",
+      authorization: `Bearer ${process.env.GATEWAY_SHARED_SECRET}`,
+    },
     body: JSON.stringify({ printerId, serial, action }),
   });
   if (!r.ok) throw new Error(`gateway control returned ${r.status}`);
