@@ -66,8 +66,12 @@ create trigger on_auth_user_created
   after insert on auth.users
   for each row execute function public.handle_new_user();
 
--- Blocks a logged-in user from changing their own `role` through PostgREST
--- (current_user = 'authenticated'); direct/service-role updates (T12 admin promotion) are unaffected.
+-- Blocks a logged-in user from changing their own `role` or `organization_id` through
+-- PostgREST (current_user = 'authenticated'); direct/service-role updates (T12 admin
+-- promotion, org transfers) are unaffected. organization_id is guarded here too: the
+-- update_own policy above only checks row ownership, not which columns change, so
+-- without this a user could self-reassign into a higher-priority-tier organization
+-- (calculateQueueOrder sorts by the org's priority_tier) and jump the shared queue.
 create or replace function public.prevent_role_change()
 returns trigger
 language plpgsql
@@ -75,6 +79,9 @@ as $$
 begin
   if current_user = 'authenticated' and new.role is distinct from old.role then
     raise exception 'role cannot be changed by the user';
+  end if;
+  if current_user = 'authenticated' and new.organization_id is distinct from old.organization_id then
+    raise exception 'organization_id cannot be changed by the user';
   end if;
   return new;
 end;
