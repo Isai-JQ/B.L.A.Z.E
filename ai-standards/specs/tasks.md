@@ -213,3 +213,9 @@ Derivado de `plan.md` (Plan Técnico 001). Cada tarea es de menos de 30 min e in
 - [ ] **T42.** Test E2E (manual o Playwright) del reordenamiento de admin reflejado en la vista de cola (T33).
   RF: RF-13
   Hecho cuando: el nuevo orden fijado por el admin se ve igual en la UI y en la base de datos.
+
+## Fase 10 — Fixes de seguridad (retroactivos)
+
+- [x] **T43.** Fix de seguridad (branch `fix/rls-jobs-notifications-org-lock`), retroactivo tras una auditoría: (1) `jobs` y `notifications` no tenían RLS habilitado en `db/schema.ts` (a diferencia de `organizations`/`user_profiles`/`printers`), lo que exponía lectura/escritura de cualquier job o notificación de cualquier organización vía la API REST de Supabase, sin pasar por las rutas de servidor — corregido con `.enableRLS()` en ambas tablas y políticas deny-all en `db/sql/003_jobs_notifications_rls.sql` (mismo patrón que `printers`, T16b); (2) la policy de `UPDATE` de `user_profiles` (T11b) solo valida dueño de la fila, no qué columnas cambian, permitiendo que un usuario se auto-reasignara `organization_id` para saltarse al tier de prioridad de otra organización — corregido extendiendo el trigger `prevent_role_change` en `db/sql/001_auth_triggers.sql` para bloquear también cambios de `organization_id`.
+  RF: RF-9, RF-13 (protege la separación de datos entre organizaciones y la prioridad de cola de las que dependen)
+  Hecho cuando: `db/jobs-notifications-rls.integration.test.ts` (nuevo, incluye el caso del propio dueño y el de un usuario de otra organización) y la prueba nueva de `organization_id` en `db/rls.integration.test.ts` pasan en verde contra el proyecto real de Supabase; `pnpm test` (21/21 archivos, 88/88 tests) y `pnpm lint` pasan. Verificado también con `security-review` y `code-reviewer` sobre el diff (0 hallazgos CRITICAL/HIGH).

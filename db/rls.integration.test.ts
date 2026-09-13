@@ -44,6 +44,7 @@ async function asUser<T>(userId: string, fn: (tx: postgres.TransactionSql) => Pr
 describe("T11b RLS policies (live Supabase)", () => {
   const suffix = randomUUID().slice(0, 8);
   const orgName = `rls-test-org-${suffix}`;
+  const otherOrgName = `rls-test-other-org-${suffix}`;
   const userIds: string[] = [];
 
   afterAll(async () => {
@@ -51,7 +52,7 @@ describe("T11b RLS policies (live Supabase)", () => {
       await sql`delete from user_profiles where id = any(${userIds})`;
       await sql`delete from auth.users where id = any(${userIds})`;
     }
-    await sql`delete from organizations where name = ${orgName}`;
+    await sql`delete from organizations where name in ${sql([orgName, otherOrgName])}`;
     await sql.end();
   });
 
@@ -87,6 +88,22 @@ describe("T11b RLS policies (live Supabase)", () => {
 
     const [profile] = await db.select().from(userProfiles).where(eq(userProfiles.id, userAId));
     expect(profile!.role).toBe("member");
+  });
+
+  it("blocks a user from changing their own organization_id", async () => {
+    const userAId = userIds[0]!;
+    const [profileBefore] = await db.select().from(userProfiles).where(eq(userProfiles.id, userAId));
+
+    // A real, valid org the user isn't in — a random UUID would trip the foreign-key
+    // constraint on its own and pass this test for the wrong reason.
+    const [targetOrg] = await sql`insert into organizations (name) values (${otherOrgName}) returning id`;
+
+    await expect(
+      asUser(userAId, (tx) => tx`update user_profiles set organization_id = ${targetOrg.id} where id = ${userAId}`),
+    ).rejects.toThrow();
+
+    const [profileAfter] = await db.select().from(userProfiles).where(eq(userProfiles.id, userAId));
+    expect(profileAfter!.organizationId).toBe(profileBefore!.organizationId);
   });
 
   // RF-14 / T10b: the domain check lives in handle_new_user() too, not just in

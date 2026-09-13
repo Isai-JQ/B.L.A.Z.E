@@ -53,6 +53,9 @@ export const jobStatus = pgEnum("job_status", [
   "failed",
 ]);
 
+// RLS on, no policies — deny-all from the client, same as printers (002_printers_rls.sql).
+// See db/sql/003_jobs_notifications_rls.sql. All legitimate access goes through
+// pages/api/jobs/** and the gateway, both using lib/db.ts's owner-role connection.
 export const jobs = pgTable("jobs", {
   id: uuid("id").primaryKey().defaultRandom(),
   userId: uuid("user_id")
@@ -70,10 +73,12 @@ export const jobs = pgTable("jobs", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   startedAt: timestamp("started_at", { withTimezone: true }),
   finishedAt: timestamp("finished_at", { withTimezone: true }),
-});
+}).enableRLS();
 
 export const notificationType = pgEnum("notification_type", ["job_failed", "job_waiting"]);
 
+// RLS on, no policies — deny-all from the client, same as printers/jobs. See
+// db/sql/003_jobs_notifications_rls.sql.
 export const notifications = pgTable("notifications", {
   id: uuid("id").primaryKey().defaultRandom(),
   userId: uuid("user_id")
@@ -86,4 +91,4 @@ export const notifications = pgTable("notifications", {
   message: text("message").notNull(),
   readAt: timestamp("read_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}).enableRLS();
