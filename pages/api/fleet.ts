@@ -21,7 +21,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (error || !data.user) return res.status(401).json({ error: "authentication required" });
 
   try {
-    const r = await fetch(`${GATEWAY}/printers`);
+    const r = await fetch(`${GATEWAY}/printers`, {
+      headers: { authorization: `Bearer ${process.env.GATEWAY_SHARED_SECRET}` },
+    });
     if (!r.ok) throw new Error(`gateway returned ${r.status}`);
     return res.status(200).json(await r.json());
   } catch (e) {

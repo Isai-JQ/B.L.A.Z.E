@@ -4,6 +4,7 @@ import { createRequire } from "node:module";
 import type { Server } from "node:http";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
+import WebSocket from "ws";
 import { afterAll, beforeAll, expect, it } from "vitest";
 
 // proxy.cjs is CommonJS and runs outside Next.js (plain `node proxy.cjs`), so it is
@@ -26,14 +27,21 @@ const SERIAL = "01P00A123456789";
 const report = (serial: string, print: Record<string, unknown>) =>
   handleReport(`device/${serial}/report`, Buffer.from(JSON.stringify({ print })));
 
+// Security fix: GET /printers and POST /control require this shared secret (checked
+// inside proxy.cjs itself, not just relied on via network topology). The Next.js API
+// layer (pages/api/fleet.ts, pages/api/jobs/[id]/control.ts) sends it as a bearer token.
+process.env.GATEWAY_SHARED_SECRET = "test-gateway-secret";
+
 const server: Server = start(0, "127.0.0.1");
 afterAll(() => void server.close());
 
 const port = () => (server.address() as { port: number }).port;
 const getPrinters = async () =>
-  (await fetch(`http://127.0.0.1:${port()}/printers`)).json() as Promise<
-    Array<Record<string, unknown> & { serial: string }>
-  >;
+  (
+    await fetch(`http://127.0.0.1:${port()}/printers`, {
+      headers: { authorization: `Bearer ${process.env.GATEWAY_SHARED_SECRET}` },
+    })
+  ).json() as Promise<Array<Record<string, unknown> & { serial: string }>>;
 
 it("keeps simulated printer state in memory and exposes it over HTTP", async () => {
   if (!server.listening) await new Promise((resolve) => server.once("listening", resolve));
@@ -98,6 +106,86 @@ it("T30b: captures AMS filament trays from the report and serves them at GET /pr
   // A later delta with no `ams` block keeps the trays.
   report(SERIAL, { mc_percent: 44 });
   expect((await getPrinters())[0].ams).toHaveLength(2);
+});
+
+// ---------------------------------------------------------------------------
+// Security fix: GET /printers and POST /control were reachable by anyone who could
+// reach the port, with no check inside proxy.cjs itself, and the server bound to all
+// interfaces (server.listen(port) with no host). Both endpoints now require the shared
+// secret as a bearer token, and the server binds to localhost only by default.
+// ---------------------------------------------------------------------------
+
+it("rejects GET /printers with no shared secret", async () => {
+  const res = await fetch(`http://127.0.0.1:${port()}/printers`);
+  expect(res.status).toBe(401);
+});
+
+it("rejects GET /printers with the wrong shared secret", async () => {
+  const res = await fetch(`http://127.0.0.1:${port()}/printers`, {
+    headers: { authorization: "Bearer wrong-secret" },
+  });
+  expect(res.status).toBe(401);
+});
+
+it("rejects POST /control with no shared secret and never sends a command", async () => {
+  const res = await fetch(`http://127.0.0.1:${port()}/control`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ printerId: "nonexistent", serial: "nonexistent", action: "pause" }),
+  });
+  // 401 (rejected before dispatch), never 502 (which is what an unauthenticated request
+  // reaching sendControlCommand for a printer with no connected client would produce).
+  expect(res.status).toBe(401);
+});
+
+it("accepts POST /control with the correct shared secret (reaches sendControlCommand)", async () => {
+  const res = await fetch(`http://127.0.0.1:${port()}/control`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      authorization: `Bearer ${process.env.GATEWAY_SHARED_SECRET}`,
+    },
+    body: JSON.stringify({ printerId: "nonexistent", serial: "nonexistent", action: "pause" }),
+  });
+  // Authenticated, so it reaches sendControlCommand, which then 502s on the unknown
+  // printer — proof the request got past the auth check, not proof of a working command.
+  expect(res.status).toBe(502);
+});
+
+it("binds the HTTP/WS server to localhost only by default, not every interface", () => {
+  const address = server.address();
+  expect(typeof address).not.toBe("string");
+  expect((address as { address: string }).address).toBe("127.0.0.1");
+});
+
+// The WS<->TLS bridge to a printer's raw MQTT port is a separate path from the plain
+// HTTP handler above: `ws` intercepts the 'upgrade' event before Node ever emits
+// 'request', so isAuthorized() must be wired into the WebSocket server's own
+// verifyClient, not just the http.createServer callback, or this stays wide open.
+const connectResult = (url: string) =>
+  new Promise<number | "open">((resolve) => {
+    const ws = new WebSocket(url);
+    ws.on("open", () => {
+      resolve("open");
+      ws.close();
+    });
+    ws.on("unexpected-response", (_req, res) => {
+      resolve(res.statusCode ?? -1);
+      ws.terminate();
+    });
+    ws.on("error", () => {});
+  });
+
+it("rejects a WebSocket bridge connection with no token", async () => {
+  expect(await connectResult(`ws://127.0.0.1:${port()}/`)).toBe(401);
+});
+
+it("rejects a WebSocket bridge connection with the wrong token", async () => {
+  expect(await connectResult(`ws://127.0.0.1:${port()}/?token=wrong-secret`)).toBe(401);
+});
+
+it("accepts a WebSocket bridge connection with the correct token", async () => {
+  expect(await connectResult(`ws://127.0.0.1:${port()}/?token=${process.env.GATEWAY_SHARED_SECRET}`)).toBe("open");
 });
 
 // ---------------------------------------------------------------------------
@@ -479,4 +567,70 @@ it("leaves a new job waiting with a notification when no printer is free, then a
     .emit("message", `device/${fleet[1].serial}/report`, Buffer.from(JSON.stringify({ print: { gcode_state: "FINISH" } })));
   expect(await waitForJobStatus(jobId, "printing")).toMatchObject({ printer_id: printerB });
   expect(sent).toContainEqual({ ip: "10.0.0.202", jobId });
+});
+
+// ---------------------------------------------------------------------------
+// Security/reliability fix: the printer lookup between claiming a job and sending
+// it (reading ip_address/access_code/serial_number) sat outside the try/catch that
+// reverts the job to 'queued' on a send failure. A transient failure there (e.g. the
+// DB connection drops for that one query) must revert the job exactly like a failed
+// send does, not leave it stuck at 'assigned' forever with nothing to retry it.
+// ---------------------------------------------------------------------------
+
+const lookupFail = {
+  userId: randomUUID(),
+  orgName: `lookup-fail-org-${suffix}`,
+  jobId: randomUUID(),
+  serial: `LFAIL-${suffix}`,
+};
+
+afterAll(async () => {
+  await sql`delete from jobs where id = ${lookupFail.jobId}`;
+  await sql`delete from printers where serial_number = ${lookupFail.serial}`;
+  await sql`delete from user_profiles where id = ${lookupFail.userId}`;
+  await sql`delete from auth.users where id = ${lookupFail.userId}`;
+  await sql`delete from organizations where name = ${lookupFail.orgName}`;
+});
+
+// Wraps the real db so the one SELECT that reads the printer's connection details
+// (unique among assignNextJob's queries in selecting access_code) fails, simulating a
+// transient DB error between claiming the job and looking up where to send it.
+function dbFailingOnPrinterLookup() {
+  return {
+    execute: (query: { queryChunks: unknown[] }) => {
+      const text = query.queryChunks
+        .map((c) => (typeof c === "string" ? "" : ((c as { value?: string[] }).value ?? []).join("")))
+        .join(" ");
+      if (text.includes("access_code")) throw new Error("connection terminated unexpectedly");
+      return db.execute(query as Parameters<typeof db.execute>[0]);
+    },
+  };
+}
+
+it("reverts the job to queued when the printer lookup fails between claim and send, same as a send failure", async () => {
+  await sql`
+    insert into auth.users (id, aud, role, email, raw_user_meta_data)
+    values (${lookupFail.userId}, 'authenticated', 'authenticated', ${`${lookupFail.userId}@tec.mx`},
+            jsonb_build_object('organization_name', ${lookupFail.orgName}::text))
+  `;
+  const [org] = await sql`select id from organizations where name = ${lookupFail.orgName}`;
+  const [printer] = await sql`
+    insert into printers (serial_number, name, ip_address, access_code, status)
+    values (${lookupFail.serial}, ${lookupFail.serial}, '10.0.0.230', 'ffff0000', 'idle') returning id
+  `;
+  await sql`
+    insert into jobs (id, user_id, organization_id, file_name, file_path, status)
+    values (${lookupFail.jobId}, ${lookupFail.userId}, ${org.id}, 'lookup.gcode', 'pending://lookup', 'queued')
+  `;
+
+  let sendCalls = 0;
+  const fakeSend = async () => {
+    sendCalls++;
+  };
+
+  const result = await proxy.assignNextJob(dbFailingOnPrinterLookup(), printer.id, fakeSend);
+
+  expect(result).toBeNull();
+  expect(sendCalls).toBe(0);
+  expect(await jobRow(lookupFail.jobId)).toMatchObject({ status: "queued", printer_id: null });
 });
