@@ -68,6 +68,17 @@ describe("T11b RLS policies (live Supabase)", () => {
     expect(profile).toMatchObject({ email, organizationId: org!.id, role: "member" });
   });
 
+  // The registration form (AuthScreen) fills its organization <select> before there is a
+  // session, i.e. as `anon`. With the read granted only to `authenticated` that list came
+  // back empty and every sign-up had to retype its organization name.
+  it("lets an anonymous visitor list organizations (registration form)", async () => {
+    const rows = await sql.begin(async (tx) => {
+      await tx`set local role anon`;
+      return tx`select name from organizations where name = ${orgName}`;
+    });
+    expect(rows).toHaveLength(1);
+  });
+
   it("blocks a user from reading another user's profile", async () => {
     const userAId = userIds[0]!;
     const userBId = await createAuthUser(`rls-test-${suffix}-b@tec.mx`, orgName);
