@@ -496,7 +496,7 @@ it("falls back to the next free printer when the send fails (T23)", async () => 
   expect(await waitForJobStatus(t22.jobT23, "printing")).toMatchObject({ printer_id: printerA });
   expect(sent.map((s) => s.ip)).toEqual(["10.0.0.202", "10.0.0.201"]);
   expect(Date.parse((await sql`select started_at from jobs where id = ${t22.jobT23}`)[0].started_at)).not.toBeNaN();
-});
+}, 20_000); // two full fallback rounds of DB polling against the live project; the 5 s default flakes
 
 // ---------------------------------------------------------------------------
 // T24: the printer running a job stops reporting. The T17 sweep flips it to

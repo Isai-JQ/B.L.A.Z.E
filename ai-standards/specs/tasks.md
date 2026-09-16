@@ -4,159 +4,159 @@ Derivado de `plan.md` (Plan Técnico 001). Cada tarea es de menos de 30 min e in
 
 ## Fase 0 — Setup del proyecto
 
-- [ ] **T1.** Crear repo nuevo con Next.js (Pages Router) + TypeScript + Tailwind CSS, gestionado con pnpm.
+- [x] **T1.** Crear repo nuevo con Next.js (Pages Router) + TypeScript + Tailwind CSS, gestionado con pnpm.
   RF: — (infraestructura)
   Hecho cuando: `pnpm dev` levanta una página en blanco sin errores.
 
-- [ ] **T2.** Crear proyecto en Supabase y archivo `.env.example` con las variables necesarias (`DATABASE_URL`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_WS_PROXY_URL`).
+- [x] **T2.** Crear proyecto en Supabase y archivo `.env.example` con las variables necesarias (`DATABASE_URL`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_WS_PROXY_URL`).
   RF: — (infraestructura)
   Hecho cuando: `.env.example` existe en el repo y `.env` real está en `.gitignore`.
 
-- [ ] **T3.** Configurar Drizzle ORM (`drizzle.config.ts`) apuntando al proyecto de Supabase.
+- [x] **T3.** Configurar Drizzle ORM (`drizzle.config.ts`) apuntando al proyecto de Supabase.
   RF: — (infraestructura)
   Hecho cuando: `pnpm db:studio` conecta sin errores a la base de datos.
 
 ## Fase 1 — Modelo de datos
 
-- [ ] **T4.** Definir tabla `organizations` (id, name, priority_tier) en el esquema Drizzle.
+- [x] **T4.** Definir tabla `organizations` (id, name, priority_tier) en el esquema Drizzle.
   RF: RF-9
   Hecho cuando: `pnpm db:push` crea la tabla y se puede insertar una fila de prueba.
 
-- [ ] **T5.** Definir tabla `user_profiles` (id, email, organization_id, role) con FK a `organizations`.
+- [x] **T5.** Definir tabla `user_profiles` (id, email, organization_id, role) con FK a `organizations`.
   RF: RF-9
   Hecho cuando: `pnpm db:push` crea la tabla con la FK aplicada.
 
-- [ ] **T6.** Definir tabla `printers` (id, serial_number, name, ip_address, access_code, status, last_seen_at).
+- [x] **T6.** Definir tabla `printers` (id, serial_number, name, ip_address, access_code, status, last_seen_at).
   RF: RF-1, RF-5, RF-6
   Hecho cuando: `pnpm db:push` crea la tabla y admite los tres valores de `status`.
 
-- [ ] **T7.** Definir tabla `jobs` (id, user_id, organization_id, printer_id, file_name, file_path, status, manual_rank, failure_reason, timestamps).
+- [x] **T7.** Definir tabla `jobs` (id, user_id, organization_id, printer_id, file_name, file_path, status, manual_rank, failure_reason, timestamps).
   RF: RF-2, RF-7, RF-10, RF-11, RF-13
   Hecho cuando: `pnpm db:push` crea la tabla con las FKs a `user_profiles`, `organizations` y `printers`.
 
-- [ ] **T8.** Definir tabla `notifications` (id, user_id, job_id, type, message, read_at, created_at).
+- [x] **T8.** Definir tabla `notifications` (id, user_id, job_id, type, message, read_at, created_at).
   RF: RF-7, RF-10
   Hecho cuando: `pnpm db:push` crea la tabla con las FKs correspondientes.
 
-- [ ] **T9.** Sembrar (`seed`) las tres organizaciones conocidas (FrED-Factory tier 1, RoBorregos y VantTec tier 2).
+- [x] **T9.** Sembrar (`seed`) las tres organizaciones conocidas (FrED-Factory tier 1, RoBorregos y VantTec tier 2).
   RF: RF-4, RF-9
   Hecho cuando: la tabla `organizations` tiene esas tres filas tras correr el script de seed.
 
 ## Fase 2 — Auth
 
-- [ ] **T10.** Adaptar `AuthScreen.tsx` del repo anterior: login/registro con Supabase Auth.
+- [x] **T10.** Adaptar `AuthScreen.tsx` del repo anterior: login/registro con Supabase Auth.
   RF: RF-9
   Hecho cuando: un usuario nuevo puede registrarse e iniciar sesión.
 
-- [ ] **T10b.** Restringir el registro a correos `@tec.mx`: validación en el cliente (`AuthScreen.tsx`, feedback inmediato) y en el trigger `handle_new_user()` de T11b (`RAISE EXCEPTION` si el dominio no es `@tec.mx`, para que no se pueda evadir llamando directo a la API de Supabase).
+- [x] **T10b.** Restringir el registro a correos `@tec.mx`: validación en el cliente (`AuthScreen.tsx`, feedback inmediato) y en el trigger `handle_new_user()` de T11b (`RAISE EXCEPTION` si el dominio no es `@tec.mx`, para que no se pueda evadir llamando directo a la API de Supabase).
   RF: RF-14
   Hecho cuando: registrarse con un correo que no sea `@tec.mx` es rechazado tanto en la UI como llamando directo a `supabase.auth.signUp()`.
 
-- [ ] **T11.** Agregar selector de organización en el registro, con opción de escribir una organización nueva (lista abierta).
+- [x] **T11.** Agregar selector de organización en el registro, con opción de escribir una organización nueva (lista abierta).
   RF: RF-9
   Hecho cuando: registrar un usuario con una organización no existente la crea automáticamente con `priority_tier` por defecto (2).
 
-- [ ] **T11b.** Habilitar Row Level Security (RLS) en Supabase para `organizations` y `user_profiles`, con políticas mínimas: cualquier usuario autenticado puede leer `organizations`, pero solo insertar filas nuevas (no editar/borrar las existentes); cada usuario puede leer y actualizar su propia fila de `user_profiles`, nunca la de otro, y nunca su propio campo `role`.
+- [x] **T11b.** Habilitar Row Level Security (RLS) en Supabase para `organizations` y `user_profiles`, con políticas mínimas: cualquier visitante (anónimo o autenticado) puede leer `organizations` —el formulario de registro lista las existentes antes de que haya sesión—, pero solo insertar filas nuevas (no editar/borrar las existentes); cada usuario puede leer y actualizar su propia fila de `user_profiles`, nunca la de otro, y nunca su propio campo `role`.
   RF: RF-9
   Hecho cuando: con RLS activo, una llamada directa a la API de Supabase (no desde la UI) intentando leer el perfil de otro usuario o cambiar el propio `role` es rechazada.
 
-- [ ] **T11c.** Envolver el script `db:push` (en `package.json`) para que, después de correr `drizzle-kit push`, siempre reaplique automáticamente las políticas RLS de `db/sql/001_auth_triggers.sql` (y cualquier archivo `db/sql/*.sql` que se agregue después). Nadie debe depender de acordarse de este paso a mano.
+- [x] **T11c.** Envolver el script `db:push` (en `package.json`) para que, después de correr `drizzle-kit push`, siempre reaplique automáticamente las políticas RLS de `db/sql/001_auth_triggers.sql` (y cualquier archivo `db/sql/*.sql` que se agregue después). Nadie debe depender de acordarse de este paso a mano.
   RF: RF-9
   Hecho cuando: correr `pnpm db:push` una sola vez deja las políticas de `organizations` y `user_profiles` intactas y verificables, sin ningún paso manual adicional.
 
-- [ ] **T12.** Asignar `role = 'member'` por defecto al registrarse; documentar cómo promover un usuario a `'admin'` manualmente (sin UI todavía).
+- [x] **T12.** Asignar `role = 'member'` por defecto al registrarse; documentar cómo promover un usuario a `'admin'` manualmente (sin UI todavía).
   RF: RF-13
   Hecho cuando: existe al menos un usuario de prueba con `role = 'admin'` en la base de datos.
 
-- [ ] **T13.** Middleware/guard: bloquear todas las páginas del dashboard a usuarios no autenticados.
+- [x] **T13.** Middleware/guard: bloquear todas las páginas del dashboard a usuarios no autenticados.
   RF: RF-9
   Hecho cuando: acceder a `/` sin sesión redirige a la pantalla de login.
 
 ## Fase 3 — Fleet y MQTT Gateway
 
-- [ ] **T14.** Extender `proxy.cjs` a un servicio Node persistente que, además de hacer de bridge WS↔TLS, mantiene en memoria el estado de cada impresora conectada.
+- [x] **T14.** Extender `proxy.cjs` a un servicio Node persistente que, además de hacer de bridge WS↔TLS, mantiene en memoria el estado de cada impresora conectada.
   RF: RF-1, RF-5, RF-6
   Hecho cuando: el servicio corre de forma independiente y expone el estado de al menos una impresora simulada.
 
-- [ ] **T14b.** Extender el gateway para que, en vez de tomar una sola impresora por argumentos de CLI, lea las impresoras registradas en la tabla `printers` y abra una conexión MQTT independiente por cada una, con el estado combinado accesible en un solo `GET /printers`.
+- [x] **T14b.** Extender el gateway para que, en vez de tomar una sola impresora por argumentos de CLI, lea las impresoras registradas en la tabla `printers` y abra una conexión MQTT independiente por cada una, con el estado combinado accesible en un solo `GET /printers`.
   RF: RF-1, RF-5, RF-6
   Hecho cuando: con dos o más impresoras insertadas en la tabla `printers` (aunque sea a mano, sin esperar a T16), el gateway se conecta a ambas y `GET /printers` devuelve el estado combinado de las dos.
 
-- [ ] **T15.** En el servicio, suscribirse a `device/{serial}/report` y actualizar `printers.status` / `last_seen_at` en la base de datos.
+- [x] **T15.** En el servicio, suscribirse a `device/{serial}/report` y actualizar `printers.status` / `last_seen_at` en la base de datos.
   RF: RF-1
   Hecho cuando: al simular un reporte MQTT, la fila de esa impresora en `printers` se actualiza.
 
-- [ ] **T16.** Endpoint `/api/printers` para registrar una impresora nueva (serial, ip, access_code, name).
+- [x] **T16.** Endpoint `/api/printers` para registrar una impresora nueva (serial, ip, access_code, name).
   RF: RF-1
   Hecho cuando: un POST válido crea la fila en `printers` y uno inválido devuelve error.
 
-- [ ] **T16b.** Habilitar RLS en `printers` sin ninguna policy para `anon`/`authenticated` (deny-all desde el cliente). Solo el servidor, con `DATABASE_URL` (dueño de la tabla, no sujeto a RLS), puede leer o escribir. Cualquier vista futura que necesite mostrar impresoras en el navegador debe pasar por una ruta de servidor que no incluya `access_code`.
+- [x] **T16b.** Habilitar RLS en `printers` sin ninguna policy para `anon`/`authenticated` (deny-all desde el cliente). Solo el servidor, con `DATABASE_URL` (dueño de la tabla, no sujeto a RLS), puede leer o escribir. Cualquier vista futura que necesite mostrar impresoras en el navegador debe pasar por una ruta de servidor que no incluya `access_code`.
   RF: RF-1
   Hecho cuando: una llamada directa a la API de Supabase (no vía `/api/printers` ni el servidor) para leer o escribir `printers` es rechazada, para cualquier rol.
 
-- [ ] **T17.** Chequeo periódico: marcar una impresora como `offline` si no llega un reporte dentro de un umbral de tiempo.
+- [x] **T17.** Chequeo periódico: marcar una impresora como `offline` si no llega un reporte dentro de un umbral de tiempo.
   RF: RF-6
   Hecho cuando: al dejar de simular reportes de una impresora, su `status` cambia a `offline` tras el umbral.
 
 ## Fase 4 — Jobs
 
-- [ ] **T18.** Endpoint de subida de archivo con validación de extensión (`.gcode`/`.3mf`) y tamaño máximo.
+- [x] **T18.** Endpoint de subida de archivo con validación de extensión (`.gcode`/`.3mf`) y tamaño máximo.
   RF: RF-3
   Hecho cuando: un archivo válido se acepta y uno con extensión o tamaño incorrecto se rechaza con mensaje claro.
 
-- [ ] **T19.** Al subir un archivo válido, crear la fila en `jobs` con `status = 'queued'` y la `organization_id` del usuario.
+- [x] **T19.** Al subir un archivo válido, crear la fila en `jobs` con `status = 'queued'` y la `organization_id` del usuario.
   RF: RF-2
   Hecho cuando: tras subir un archivo, aparece una fila nueva en `jobs` con los datos correctos.
 
-- [ ] **T20.** Guardar el archivo subido en almacenamiento (carpeta local o Supabase Storage) y enlazarlo en `jobs.file_path`.
+- [x] **T20.** Guardar el archivo subido en almacenamiento (carpeta local o Supabase Storage) y enlazarlo en `jobs.file_path`.
   RF: RF-2, RF-11
   Hecho cuando: el archivo subido es recuperable a partir de `file_path`.
 
 ## Fase 5 — Queue Engine
 
-- [ ] **T21.** Función pura que, dado un conjunto de jobs, calcula el orden de la cola (tier de organización → FIFO por `created_at` → `manual_rank` si existe).
+- [x] **T21.** Función pura que, dado un conjunto de jobs, calcula el orden de la cola (tier de organización → FIFO por `created_at` → `manual_rank` si existe).
   RF: RF-4, RF-13
   Hecho cuando: dado un set de jobs de prueba con tiers y timestamps distintos, la función devuelve el orden esperado.
 
-- [ ] **T22.** Al liberarse una impresora (status pasa a `idle`), tomar el primer job de la cola calculada y asignarlo (`printer_id`, `status = 'assigned'`).
+- [x] **T22.** Al liberarse una impresora (status pasa a `idle`), tomar el primer job de la cola calculada y asignarlo (`printer_id`, `status = 'assigned'`).
   RF: RF-5
   Hecho cuando: al simular que una impresora queda libre con jobs en cola, el primero se asigna automáticamente.
 
-- [ ] **T23.** Al asignar un job (T22), enviarlo de verdad a la impresora: subir el archivo por FTP e iniciar la impresión con el comando MQTT correspondiente (portar la lógica de `bambulabs_api` del repo de referencia a Node dentro del gateway). Si ese envío falla (no solo si `printers.status` ya decía offline), reintentar automáticamente con la siguiente impresora libre del fleet.
+- [x] **T23.** Al asignar un job (T22), enviarlo de verdad a la impresora: subir el archivo por FTP e iniciar la impresión con el comando MQTT correspondiente (portar la lógica de `bambulabs_api` del repo de referencia a Node dentro del gateway). Si ese envío falla (no solo si `printers.status` ya decía offline), reintentar automáticamente con la siguiente impresora libre del fleet.
   RF: RF-6
   Hecho cuando: simulando que el envío real (FTP/MQTT) falla para la impresora asignada, aunque su `status` en base de datos diga `idle`, el job termina asignado y enviado con éxito a otra impresora libre.
 
-- [ ] **T24.** Si una impresora se desconecta mientras un job tiene `status = 'printing'`, marcar el job como `failed` y crear una notificación.
+- [x] **T24.** Si una impresora se desconecta mientras un job tiene `status = 'printing'`, marcar el job como `failed` y crear una notificación.
   RF: RF-7
   Hecho cuando: al simular la desconexión de una impresora con un job en curso, el job pasa a `failed` y aparece una fila en `notifications`.
 
-- [ ] **T25.** Si no hay ninguna impresora libre al encolar un job, dejarlo en `status = 'waiting'` y crear una notificación de "en lista de espera".
+- [x] **T25.** Si no hay ninguna impresora libre al encolar un job, dejarlo en `status = 'waiting'` y crear una notificación de "en lista de espera".
   RF: RF-10
   Hecho cuando: con todas las impresoras ocupadas/offline, un job nuevo queda en `waiting` y genera una notificación.
 
-- [ ] **T26.** Endpoint para que un admin fije `manual_rank` en uno o más jobs, y que el cálculo de la cola lo respete.
+- [x] **T26.** Endpoint para que un admin fije `manual_rank` en uno o más jobs, y que el cálculo de la cola lo respete.
   RF: RF-13
   Hecho cuando: un usuario con `role = 'admin'` puede cambiar el orden de dos jobs y la cola calculada refleja el cambio; un usuario `member` recibe error al intentarlo.
 
 ## Fase 6 — Control de impresión
 
-- [ ] **T27.** Endpoints/comandos para pausar, reanudar y detener un job en curso, enviados vía MQTT a la impresora asignada. Solo el dueño del job (`user_id`) o un usuario con `role = 'admin'` puede ejecutarlos; cualquier otro recibe 403.
+- [x] **T27.** Endpoints/comandos para pausar, reanudar y detener un job en curso, enviados vía MQTT a la impresora asignada. Solo el dueño del job (`user_id`) o un usuario con `role = 'admin'` puede ejecutarlos; cualquier otro recibe 403.
   RF: RF-8
   Hecho cuando: cada comando, al ejecutarse contra una impresora simulada, dispara el mensaje MQTT correspondiente en `device/{serial}/request`.
 
 ## Fase 7 — Notificaciones
 
-- [ ] **T28.** Endpoint/lectura de notificaciones por usuario (listar, marcar como leídas).
+- [x] **T28.** Endpoint/lectura de notificaciones por usuario (listar, marcar como leídas).
   RF: RF-7, RF-10
   Hecho cuando: un usuario puede obtener sus notificaciones no leídas vía API.
 
-- [ ] **T29.** Suscripción en el cliente (Supabase Realtime o polling corto) para mostrar notificaciones nuevas sin recargar la página.
+- [x] **T29.** Suscripción en el cliente (Supabase Realtime o polling corto) para mostrar notificaciones nuevas sin recargar la página.
   RF: RF-7, RF-10
   Hecho cuando: al crear una notificación en la base de datos, aparece en la interfaz sin recargar.
 
 ## Fase 8 — Dashboard UI
 
-- [ ] **T30.** Adaptar `Topbar`, `Sidebar`, `MetricsRow` y `PrinterDetail` del repo anterior para mostrar el estado en tiempo real del fleet.
+- [x] **T30.** Adaptar `Topbar`, `Sidebar`, `MetricsRow` y `PrinterDetail` del repo anterior para mostrar el estado en tiempo real del fleet.
   RF: RF-1
   Hecho cuando: la interfaz muestra temperatura, progreso y estado de al menos una impresora simulada, actualizándose sola.
 
@@ -164,23 +164,23 @@ Derivado de `plan.md` (Plan Técnico 001). Cada tarea es de menos de 30 min e in
   RF: RF-1
   Hecho cuando: un reporte simulado con datos de AMS se refleja en `GET /printers` y se muestra en el dashboard sin recargar.
 
-- [ ] **T31.** Adaptar `AddJobModal` para subir un archivo con feedback visual de validación (aceptado/rechazado).
+- [x] **T31.** Adaptar `AddJobModal` para subir un archivo con feedback visual de validación (aceptado/rechazado).
   RF: RF-3
   Hecho cuando: subir un archivo inválido muestra el mensaje de error en la UI, sin recargar la página.
 
-- [ ] **T32.** Nueva vista "Cola" que lista los jobs actuales con su posición, organización y estado.
+- [x] **T32.** Nueva vista "Cola" que lista los jobs actuales con su posición, organización y estado.
   RF: RF-12
   Hecho cuando: cualquier usuario autenticado puede ver la lista completa de jobs en cola, en el orden correcto.
 
-- [ ] **T33.** Controles de reordenamiento manual visibles solo para `role = 'admin'` en la vista de cola.
+- [x] **T33.** Controles de reordenamiento manual visibles solo para `role = 'admin'` en la vista de cola.
   RF: RF-13
   Hecho cuando: un admin puede mover un job hacia arriba/abajo en la UI y el cambio persiste al recargar.
 
-- [ ] **T34.** Componente de notificaciones (badge + lista desplegable) conectado a T29.
+- [x] **T34.** Componente de notificaciones (badge + lista desplegable) conectado a T29.
   RF: RF-7, RF-10
   Hecho cuando: una notificación nueva incrementa el badge y se puede marcar como leída desde la UI.
 
-- [ ] **T35.** Botones de pausar/reanudar/detener en `PrinterDetail`, conectados a los endpoints de T27.
+- [x] **T35.** Botones de pausar/reanudar/detener en `PrinterDetail`, conectados a los endpoints de T27.
   RF: RF-1, RF-8
   Hecho cuando: presionar cada botón contra una impresora simulada dispara el comando correcto y la UI refleja el nuevo estado.
 
@@ -206,11 +206,11 @@ Derivado de `plan.md` (Plan Técnico 001). Cada tarea es de menos de 30 min e in
   RF: RF-9
   Hecho cuando: el test crea una organización nueva vía registro y verifica su `priority_tier` por defecto.
 
-- [ ] **T41.** Test E2E (manual o Playwright) del flujo completo: login, subir job, ver estado en tiempo real, pausar/reanudar/detener.
+- [x] **T41.** Test E2E (manual o Playwright) del flujo completo: login, subir job, ver estado en tiempo real, pausar/reanudar/detener.
   RF: RF-1, RF-8
   Hecho cuando: el flujo se completa sin errores contra al menos una impresora real o simulada.
 
-- [ ] **T42.** Test E2E (manual o Playwright) del reordenamiento de admin reflejado en la vista de cola (T33).
+- [x] **T42.** Test E2E (manual o Playwright) del reordenamiento de admin reflejado en la vista de cola (T33).
   RF: RF-13
   Hecho cuando: el nuevo orden fijado por el admin se ve igual en la UI y en la base de datos.
 
