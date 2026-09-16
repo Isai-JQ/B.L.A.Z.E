@@ -367,7 +367,7 @@ async function sweepOffline(db, thresholdSeconds = OFFLINE_AFTER_SECONDS) {
         ), failed as (
           update jobs j
           set status = 'failed', finished_at = now(),
-              failure_reason = 'Printer ' || g.name || ' disconnected while printing'
+              failure_reason = 'La impresora ' || g.name || ' se desconectó a media impresión'
           from gone g
           where j.printer_id = g.id and j.status = 'printing'
           returning j.id, j.user_id, j.failure_reason
