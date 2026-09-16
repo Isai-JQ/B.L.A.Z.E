@@ -521,7 +521,7 @@ it("fails the printing job and notifies its owner when its printer goes offline 
   expect((await rowFor(fleet[0].serial)).status).toBe("offline");
   expect(await jobRow(t22.jobT23)).toMatchObject({ status: "failed" });
   const [job] = await sql`select failure_reason, finished_at from jobs where id = ${t22.jobT23}`;
-  expect(job.failure_reason).toMatch(/disconnected/);
+  expect(job.failure_reason).toMatch(/se desconectó/);
   expect(job.finished_at).not.toBeNull();
   const notes = await sql`select user_id, type, message from notifications where job_id = ${t22.jobT23}`;
   expect(notes).toHaveLength(1);
@@ -556,7 +556,7 @@ it("leaves a new job waiting with a notification when no printer is free, then a
   const notes = await sql`select user_id, type, message from notifications where job_id = ${jobId}`;
   expect(notes).toHaveLength(1);
   expect(notes[0]).toMatchObject({ user_id: t22.userId, type: "job_waiting" });
-  expect(notes[0].message).toMatch(/waiting/);
+  expect(notes[0].message).toMatch(/lista de espera/);
 
   // B finishes its print and answers again → it takes the waiting job like a queued one.
   unreachable.delete("10.0.0.202");

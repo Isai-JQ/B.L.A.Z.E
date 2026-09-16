@@ -119,7 +119,7 @@ export async function createQueuedJob(
         userId,
         jobId: row.id,
         type: "job_waiting",
-        message: `No printer is free right now: ${fileName} is on the waiting list`,
+        message: `Ninguna impresora está libre ahora: ${fileName} quedó en lista de espera`,
       });
     }
     return { status: 201, body: row };
