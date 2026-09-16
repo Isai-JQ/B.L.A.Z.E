@@ -6,11 +6,14 @@
 -- Run separately: `psql "$DIRECT_URL" -f db/sql/001_auth_triggers.sql`
 -- (or paste into the Supabase SQL editor). Idempotent, safe to re-run.
 
--- organizations: read-only from the client. No INSERT/UPDATE/DELETE policy — rows are
--- created only by the handle_new_user() trigger below (SECURITY DEFINER, bypasses RLS).
+-- organizations: read-only from the client, for anyone — the registration form
+-- (AuthScreen) lists them before a session exists, so `anon` needs the read as well as
+-- `authenticated`. No INSERT/UPDATE/DELETE policy — rows are created only by the
+-- handle_new_user() trigger below (SECURITY DEFINER, bypasses RLS).
 drop policy if exists organizations_select_authenticated on public.organizations;
-create policy organizations_select_authenticated on public.organizations
-  for select to authenticated
+drop policy if exists organizations_select_public on public.organizations;
+create policy organizations_select_public on public.organizations
+  for select to anon, authenticated
   using (true);
 
 -- user_profiles: each user can only see/update their own row. No INSERT policy — rows
